@@ -33,3 +33,4 @@ jobs:
             napi-pallas/package.js
             napi-pallas/yarn.lock
             napi-pallas/*.node
+            napi-pallas/npm
