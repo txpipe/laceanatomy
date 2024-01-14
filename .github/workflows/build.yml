@@ -28,6 +28,7 @@ jobs:
           name: build-artifacts
           path: |
             web/build
+            web/public
             web/package.json
             napi-pallas/index.js
             napi-pallas/package.js
