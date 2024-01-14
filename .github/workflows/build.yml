@@ -20,7 +20,7 @@ jobs:
       # for some reason we need to install by hand the napi-pallas package
       - name: napi-pallas
         working-directory: napi-pallas
-        run: yarn run build
+        run: yarn install && yarn run build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
