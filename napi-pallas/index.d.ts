@@ -5,7 +5,7 @@
 
 export interface ShelleyPart {
   isScript: boolean
-  pubkeyHash?: string
+  hash?: string
   pointer?: string
 }
 export interface AddressDiagnostic {
@@ -13,6 +13,7 @@ export interface AddressDiagnostic {
   network?: string
   paymentPart?: ShelleyPart
   delegationPart?: ShelleyPart
+  byronCbor?: string
 }
 export interface Output {
   error?: string

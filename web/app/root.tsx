@@ -61,20 +61,36 @@ export default function App() {
           </header>
           <Outlet />
           <footer className="mt-32 p-10 grid grid-cols-3 bg-slate-100 border-t-2 border-gray-300 border-dashed">
-            <div className="flex flex-col items-center">
-              <p>Made by TxPipe</p>
-              <p>Open-source tools for blockchain devs</p>
-              <a href="https://txpipe.io">txpipe.io</a>
+            <div className="flex flex-col items-center text-center">
+              <p className="text-lg font-extrabold">Made by TxPipe</p>
+              <p className="text-gray-700">
+                Open-source tools for
+                <br /> blockchain devs
+              </p>
+              <a className="text-blue-400" href="https://txpipe.io">
+                https://txpipe.io
+              </a>
             </div>
-            <div className="flex flex-col items-center">
-              <p>Hosted in Demeter.run</p>
-              <p>Cardano infrastructure made simple</p>
-              <a href="https://demeter.run">demeter.run</a>
+            <div className="flex flex-col items-center text-center">
+              <p className="text-lg font-extrabold">Hosted in Demeter.run</p>
+              <p className="text-gray-700">
+                Cardano infrastructure
+                <br /> made simple
+              </p>
+              <a className="text-blue-400" href="https://demeter.run">
+                https://demeter.run
+              </a>
             </div>
-            <div className="flex flex-col items-center">
-              <p>Building a dApp?</p>
-              <p>We can help!</p>
-              <a href="https://txpipe.shop">txpipe.shop</a>
+            <div className="flex flex-col items-center text-center">
+              <p className="text-lg font-extrabold">Building a dApp?</p>
+              <p className="text-gray-700">
+                We can help!
+                <br />
+                Schedule an intro call
+              </p>
+              <a className="text-blue-400" href="https://txpipe.shop">
+                https://txpipe.shop
+              </a>
             </div>
           </footer>
         </div>

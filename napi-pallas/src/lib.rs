@@ -18,7 +18,7 @@ fn network_to_string(network: Network) -> String {
 #[napi(object)]
 pub struct ShelleyPart {
   pub is_script: bool,
-  pub pubkey_hash: Option<String>,
+  pub hash: Option<String>,
   pub pointer: Option<String>,
 }
 
@@ -26,7 +26,7 @@ impl From<&pallas::ledger::addresses::ShelleyPaymentPart> for ShelleyPart {
   fn from(value: &pallas::ledger::addresses::ShelleyPaymentPart) -> Self {
     Self {
       is_script: value.is_script(),
-      pubkey_hash: Some(value.as_hash().to_string()),
+      hash: Some(value.as_hash().to_string()),
       pointer: None,
     }
   }
@@ -37,17 +37,17 @@ impl From<&pallas::ledger::addresses::ShelleyDelegationPart> for ShelleyPart {
     match value {
       pallas::ledger::addresses::ShelleyDelegationPart::Key(x) => Self {
         is_script: false,
-        pubkey_hash: Some(x.to_string()),
+        hash: Some(x.to_string()),
         pointer: None,
       },
       pallas::ledger::addresses::ShelleyDelegationPart::Script(x) => Self {
         is_script: true,
-        pubkey_hash: Some(x.to_string()),
+        hash: Some(x.to_string()),
         pointer: None,
       },
       pallas::ledger::addresses::ShelleyDelegationPart::Pointer(x) => Self {
         is_script: false,
-        pubkey_hash: None,
+        hash: None,
         pointer: Some(format!(
           "slot: {}, tx: {}, cert: {}",
           x.slot(),
@@ -57,7 +57,24 @@ impl From<&pallas::ledger::addresses::ShelleyDelegationPart> for ShelleyPart {
       },
       pallas::ledger::addresses::ShelleyDelegationPart::Null => Self {
         is_script: false,
-        pubkey_hash: None,
+        hash: None,
+        pointer: None,
+      },
+    }
+  }
+}
+
+impl From<&pallas::ledger::addresses::StakePayload> for ShelleyPart {
+  fn from(value: &pallas::ledger::addresses::StakePayload) -> Self {
+    match value {
+      pallas::ledger::addresses::StakePayload::Stake(x) => Self {
+        is_script: false,
+        hash: Some(x.to_string()),
+        pointer: None,
+      },
+      pallas::ledger::addresses::StakePayload::Script(x) => Self {
+        is_script: true,
+        hash: Some(x.to_string()),
         pointer: None,
       },
     }
@@ -70,6 +87,7 @@ pub struct AddressDiagnostic {
   pub network: Option<String>,
   pub payment_part: Option<ShelleyPart>,
   pub delegation_part: Option<ShelleyPart>,
+  pub byron_cbor: Option<String>,
 }
 
 impl From<Address> for AddressDiagnostic {
@@ -80,18 +98,21 @@ impl From<Address> for AddressDiagnostic {
         network: None,
         payment_part: None,
         delegation_part: None,
+        byron_cbor: Some(hex::encode(x.payload.as_slice())),
       },
       Address::Shelley(x) => Self {
         kind: "Shelley".into(),
         network: Some(network_to_string(x.network())),
         payment_part: Some(x.payment().into()),
         delegation_part: Some(x.delegation().into()),
+        byron_cbor: None,
       },
       Address::Stake(x) => Self {
         kind: "Stake".into(),
         network: Some(network_to_string(x.network())),
         payment_part: None,
-        delegation_part: None,
+        delegation_part: Some(x.payload().into()),
+        byron_cbor: None,
       },
     }
   }
