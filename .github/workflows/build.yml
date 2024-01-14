@@ -57,9 +57,7 @@ jobs:
           images: ghcr.io/txpipe/laceanatomy
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern=v{{major}}
-            type=semver,pattern=v{{major}}.{{minor}}
-            type=semver,pattern=v{{version}}
+            type=sha
 
       - name: Login to DockerHub
         uses: docker/login-action@v2
