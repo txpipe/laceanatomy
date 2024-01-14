@@ -28,7 +28,8 @@ jobs:
           name: build-artifacts
           path: |
             web/build
-            web/node_modules
+            web/package.json
             napi-pallas/index.js
             napi-pallas/package.js
+            napi-pallas/yarn.lock
             napi-pallas/*.node
