@@ -17,8 +17,10 @@ jobs:
       - name: yarn install
         run: yarn install
 
-      - name: napi-pallas build
-        run: yarn workspaces run build
+      # for some reason we need to install by hand the napi-pallas package
+      - name: napi-pallas
+        working-directory: napi-pallas
+        run: yarn run build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
