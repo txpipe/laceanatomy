@@ -1006,14 +1006,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"laceanatomy@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "laceanatomy@workspace:."
-  dependencies:
-    typescript: "npm:^5.1.6"
-  languageName: unknown
-  linkType: soft
-
 "load-json-file@npm:^7.0.0":
   version: 7.0.1
   resolution: "load-json-file@npm:7.0.1"
@@ -1249,9 +1241,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"napi-pallas@workspace:napi-pallas":
+"napi-pallas@workspace:.":
   version: 0.0.0-use.local
-  resolution: "napi-pallas@workspace:napi-pallas"
+  resolution: "napi-pallas@workspace:."
   dependencies:
     "@napi-rs/cli": "npm:^2.17.0"
     ava: "npm:^5.1.1"
@@ -1734,26 +1726,6 @@ __metadata:
   version: 0.13.1
   resolution: "type-fest@npm:0.13.1"
   checksum: 0c0fa07ae53d4e776cf4dac30d25ad799443e9eef9226f9fddbb69242db86b08584084a99885cfa5a9dfe4c063ebdc9aa7b69da348e735baede8d43f1aeae93b
-  languageName: node
-  linkType: hard
-
-"typescript@npm:^5.1.6":
-  version: 5.3.3
-  resolution: "typescript@npm:5.3.3"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: e33cef99d82573624fc0f854a2980322714986bc35b9cb4d1ce736ed182aeab78e2cb32b385efa493b2a976ef52c53e20d6c6918312353a91850e2b76f1ea44f
-  languageName: node
-  linkType: hard
-
-"typescript@patch:typescript@npm%3A^5.1.6#optional!builtin<compat/typescript>":
-  version: 5.3.3
-  resolution: "typescript@patch:typescript@npm%3A5.3.3#optional!builtin<compat/typescript>::version=5.3.3&hash=e012d7"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 1d0a5f4ce496c42caa9a30e659c467c5686eae15d54b027ee7866744952547f1be1262f2d40de911618c242b510029d51d43ff605dba8fb740ec85ca2d3f9500
   languageName: node
   linkType: hard
 
