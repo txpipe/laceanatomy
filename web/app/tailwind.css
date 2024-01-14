@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer components {
+    .nav-item-active {
+      @apply text-xl bg-black text-white min-w-24 block rounded-xl p-2 ml-4 text-center shadow-md shadow-gray-300;
+    }
+
+    .nav-item-inactive {
+      @apply text-xl bg-gray-100 text-black min-w-24 block rounded-xl p-2 ml-4 text-center shadow-md shadow-gray-300;
+    }    
+}

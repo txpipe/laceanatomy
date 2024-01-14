@@ -1,0 +1,11 @@
+{
+  "name": "laceanatomy",
+  "private": true,
+  "workspaces": [
+    "napi-pallas",
+    "laceanatomy-web"
+  ],
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  }
+}
