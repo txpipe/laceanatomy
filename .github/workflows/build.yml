@@ -14,12 +14,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: yarn install
-        run: yarn install
-
-      # for some reason we need to install by hand the napi-pallas package
       - name: napi-pallas
         working-directory: napi-pallas
+        run: yarn install && yarn run build
+
+      - name: web
+        working-directory: web
         run: yarn install && yarn run build
 
       - name: Upload Artifact
@@ -27,5 +27,8 @@ jobs:
         with:
           name: build-artifacts
           path: |
-            **/build
-            **/dist
+            web/build
+            web/node_modules
+            napi-pallas/index.js
+            napi-pallas/package.js
+            napi-pallas/*.node
