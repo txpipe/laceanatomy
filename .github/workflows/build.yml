@@ -14,9 +14,11 @@ jobs:
         with:
           node-version: "20"
 
-      - name: napi-rs build
-        working-directory: napi-pallas
-        run: yarn run build
+      - name: yarn install
+        run: yarn install
+
+      - name: napi-pallas build
+        run: yarn workspaces run build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
