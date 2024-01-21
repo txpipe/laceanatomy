@@ -20,4 +20,18 @@ export interface Output {
   bytes?: string
   address?: AddressDiagnostic
 }
+export interface Attribute {
+  topic?: string
+  value?: string
+}
+export interface Section {
+  topic?: string
+  identity?: string
+  error?: string
+  attributes: Array<Attribute>
+  bytes?: string
+  children: Array<Section>
+}
 export function parseAddress(raw: string): Output
+export function safeParseTx(raw: string): Section
+export function safeParseBlock(raw: string): Section

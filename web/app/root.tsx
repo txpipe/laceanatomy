@@ -32,6 +32,9 @@ function MenuItem(props: { to: string; label: string }) {
   );
 }
 
+// styles inspired by:
+// https://flabbergasted.lexingtonthemes.com
+
 export default function App() {
   return (
     <html lang="en">

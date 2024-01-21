@@ -6,6 +6,7 @@ import {
 } from "@remix-run/node";
 import { parseAddress } from "./address.server";
 import { Form, useActionData } from "@remix-run/react";
+import { Button, EmptyBlock, HexBlock, PropBlock } from "~/components";
 import { PropsWithChildren } from "react";
 
 export const meta: MetaFunction = () => {
@@ -23,11 +24,11 @@ export async function action({ request }: ActionFunctionArgs) {
     const res = parseAddress(addressRaw);
     return json({ ...res });
   } else {
-    return json({ error: "an empty value? are you serious?" });
+    return json({ error: "an empty value? seriously?" });
   }
 }
 
-function DataSection(props: PropsWithChildren<{ title: string }>) {
+function Section(props: PropsWithChildren<{ title: string }>) {
   return (
     <blockquote className="mt-6 md:border-l-4 md:px-10 py-4 border-dashed">
       <h4 className="text-3xl">{props.title}</h4>
@@ -36,37 +37,11 @@ function DataSection(props: PropsWithChildren<{ title: string }>) {
   );
 }
 
-function HexBlock(props: { name: string; value: string }) {
-  return (
-    <div className="mt-8 p-4 border-2 bg-green-200 border-green-700 shadow shadow-black rounded-lg text-2xl break-words">
-      <div className="text-sm text-green-800">{props.name}</div>
-      {props.value}
-    </div>
-  );
-}
-
-function PropBlock(props: { name: string; value: string }) {
-  return (
-    <div className="mt-8 p-4 border-2 bg-gray-200 border-gray-700 shadow shadow-black rounded-lg text-xl">
-      <div className="text-sm text-gray-600">{props.name}</div>
-      {props.value}
-    </div>
-  );
-}
-
-function EmptyBlock() {
-  return (
-    <div className="mt-8 p-4 border-2 bg-red-200 border-red-400 text-red-600 shadow shadow-black rounded-lg text-xl">
-      Empty
-    </div>
-  );
-}
-
 function ByronSection(props: { data: any }) {
   const { data } = props;
 
   return (
-    <DataSection title="Decoded Base58">
+    <Section title="Decoded Base58">
       <p className="text-gray-600 text-xl">
         Your address is a valid base58 address value. By decoding the base58
         content we obtain a bytestring that can be interpreted according
@@ -82,7 +57,7 @@ function ByronSection(props: { data: any }) {
         following a different encoding format: Shelley, Stake or Byron.
       </p>
       <HexBlock name="address bytes (hex)" value={data?.bytes} />
-      <DataSection title="Parsed Address">
+      <Section title="Parsed Address">
         <p className="text-gray-600 text-xl">
           The address entered is of type&nbsp;
           <code>Byron</code>. Byron addresses are actually CBOR structures with
@@ -91,16 +66,16 @@ function ByronSection(props: { data: any }) {
           detail.
         </p>
         <PropBlock name="type" value={data?.address.kind} />
-        <DataSection title="CBOR">
+        <Section title="CBOR">
           <p className="text-gray-600 text-xl">
             The following bytes are CBOR-encoded structures, you can continue
             your decoding journey using these (hex-encoded) bytes and a CBOR
             decoder.
           </p>
           <HexBlock name="CBOR (hex) " value={data?.address.byronCbor} />
-        </DataSection>
-      </DataSection>
-    </DataSection>
+        </Section>
+      </Section>
+    </Section>
   );
 }
 
@@ -108,7 +83,7 @@ function StakeSection(props: { data: any }) {
   const { data } = props;
 
   return (
-    <DataSection title="Decoded Bech32">
+    <Section title="Decoded Bech32">
       <p className="text-gray-600 text-xl">
         Your address is a valid bech32 address value. By decoding the bech32
         content we obtain a bytestring that can be interpreted according
@@ -124,23 +99,23 @@ function StakeSection(props: { data: any }) {
         following a different encoding format: Shelley, Stake or Byron.
       </p>
       <HexBlock name="address bytes (hex)" value={data?.bytes} />
-      <DataSection title="Parsed Address">
+      <Section title="Parsed Address">
         <p className="text-gray-600 text-xl">
           The address entered is of type&nbsp;
           <code>Stake</code>. Stake addresses contain two pieces of information:
           network tag and delegation info.
         </p>
         <PropBlock name="type" value={data?.address.kind} />
-        <DataSection title="Network Tag">
+        <Section title="Network Tag">
           <p className="text-gray-600 text-xl">
             The netword tag is a flag to indicate to which network it belongs
             (either mainnet or a testnet).
           </p>
           <PropBlock name="network tag" value={data?.address.network} />
-        </DataSection>
+        </Section>
         {(!!data.address.delegationPart.hash ||
           !!data.address.delegationPart.pointer) && (
-          <DataSection title="Delegation Info">
+          <Section title="Delegation Info">
             <p className="text-gray-600 text-xl">
               The delegation part describes who has control of the staking of
               the locked values. There are two options: a verification key or a
@@ -163,10 +138,10 @@ function StakeSection(props: { data: any }) {
                 value={data.address.delegationPart.pointer}
               />
             )}
-          </DataSection>
+          </Section>
         )}
-      </DataSection>
-    </DataSection>
+      </Section>
+    </Section>
   );
 }
 
@@ -174,7 +149,7 @@ function ShelleySection(props: { data: any }) {
   const { data } = props;
 
   return (
-    <DataSection title="Decoded Bech32">
+    <Section title="Decoded Bech32">
       <p className="text-gray-600 text-xl">
         Your address is a valid bech32 address value. By decoding the bech32
         content we obtain a bytestring that can be interpreted according
@@ -190,22 +165,22 @@ function ShelleySection(props: { data: any }) {
         following a different encoding format: Shelley, Stake or Byron.
       </p>
       <HexBlock name="address bytes (hex)" value={data?.bytes} />
-      <DataSection title="Parsed Address">
+      <Section title="Parsed Address">
         <p className="text-gray-600 text-xl">
           The address entered is of type&nbsp;
           <code>Shelley</code>. Shelley addresses contain three pieces of
           information: network id, payment part and a delegation part.
         </p>
         <PropBlock name="type" value={data?.address.kind} />
-        <DataSection title="Network Id">
+        <Section title="Network Id">
           <p className="text-gray-600 text-xl">
             The netword id is a flag to indicate to which network it belongs
             (either mainnet or a testnet).
           </p>
           <PropBlock name="network id" value={data?.address.network} />
-        </DataSection>
+        </Section>
         {!!data.address.paymentPart && (
-          <DataSection title="Payment Part">
+          <Section title="Payment Part">
             <p className="text-gray-600 text-xl">
               The payment part describes who has control of the ownership of the
               locked values. There are two options: a verification key or a
@@ -220,11 +195,11 @@ function ShelleySection(props: { data: any }) {
               }
             />
             <HexBlock name="hash" value={data.address.paymentPart.hash} />
-          </DataSection>
+          </Section>
         )}
         {(!!data.address.delegationPart.hash ||
           !!data.address.delegationPart.pointer) && (
-          <DataSection title="Delegation Part">
+          <Section title="Delegation Part">
             <p className="text-gray-600 text-xl">
               The delegation part describes who has control of the staking of
               the locked values. There are two options: a verification key or a
@@ -247,11 +222,11 @@ function ShelleySection(props: { data: any }) {
                 value={data.address.delegationPart.pointer}
               />
             )}
-          </DataSection>
+          </Section>
         )}
         {!data.address.delegationPart.hash &&
           !data.address.delegationPart.pointer && (
-            <DataSection title="Delegation Part">
+            <Section title="Delegation Part">
               <p className="text-gray-600 text-xl">
                 The delegation part describes who has control of the staking of
                 the locked values. This address doesn't specify a delegation
@@ -259,10 +234,10 @@ function ShelleySection(props: { data: any }) {
                 this address.
               </p>
               <EmptyBlock />
-            </DataSection>
+            </Section>
           )}
-      </DataSection>
-    </DataSection>
+      </Section>
+    </Section>
   );
 }
 
@@ -287,6 +262,9 @@ export default function Index() {
             className="block w-full px-4 py-2 mt-4 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8  appearance-none text-black placeholder-gray-400 text-2xl outline-none"
             placeholder="Enter any Cardano address in Bech32, Base58 or Hex encoding"
           />
+          <div className="flex flex-row justify-end mt-4">
+            <Button type="submit">Parse</Button>
+          </div>
         </Form>
       </div>
       {!!data?.error && (

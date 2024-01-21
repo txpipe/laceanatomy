@@ -281,6 +281,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { parseAddress } = nativeBinding
+const { parseAddress, safeParseTx, safeParseBlock } = nativeBinding
 
 module.exports.parseAddress = parseAddress
+module.exports.safeParseTx = safeParseTx
+module.exports.safeParseBlock = safeParseBlock

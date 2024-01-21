@@ -1,142 +1,138 @@
 #![deny(clippy::all)]
 
+use std::str::FromStr;
+
 #[macro_use]
 extern crate napi_derive;
 
-use std::str::FromStr;
+mod address;
+mod block;
+mod tx;
 
-use pallas::ledger::addresses::{Address, Network};
-
-fn network_to_string(network: Network) -> String {
-  match network {
-    Network::Testnet => "testnet".into(),
-    Network::Mainnet => "mainnet".into(),
-    Network::Other(x) => format! {"other({x}0"},
-  }
-}
-
+#[derive(Default)]
 #[napi(object)]
-pub struct ShelleyPart {
-  pub is_script: bool,
-  pub hash: Option<String>,
-  pub pointer: Option<String>,
+pub struct Attribute {
+  pub topic: Option<String>,
+  pub value: Option<String>,
 }
 
-impl From<&pallas::ledger::addresses::ShelleyPaymentPart> for ShelleyPart {
-  fn from(value: &pallas::ledger::addresses::ShelleyPaymentPart) -> Self {
-    Self {
-      is_script: value.is_script(),
-      hash: Some(value.as_hash().to_string()),
-      pointer: None,
-    }
-  }
-}
-
-impl From<&pallas::ledger::addresses::ShelleyDelegationPart> for ShelleyPart {
-  fn from(value: &pallas::ledger::addresses::ShelleyDelegationPart) -> Self {
-    match value {
-      pallas::ledger::addresses::ShelleyDelegationPart::Key(x) => Self {
-        is_script: false,
-        hash: Some(x.to_string()),
-        pointer: None,
-      },
-      pallas::ledger::addresses::ShelleyDelegationPart::Script(x) => Self {
-        is_script: true,
-        hash: Some(x.to_string()),
-        pointer: None,
-      },
-      pallas::ledger::addresses::ShelleyDelegationPart::Pointer(x) => Self {
-        is_script: false,
-        hash: None,
-        pointer: Some(format!(
-          "slot: {}, tx: {}, cert: {}",
-          x.slot(),
-          x.tx_idx(),
-          x.cert_idx()
-        )),
-      },
-      pallas::ledger::addresses::ShelleyDelegationPart::Null => Self {
-        is_script: false,
-        hash: None,
-        pointer: None,
-      },
-    }
-  }
-}
-
-impl From<&pallas::ledger::addresses::StakePayload> for ShelleyPart {
-  fn from(value: &pallas::ledger::addresses::StakePayload) -> Self {
-    match value {
-      pallas::ledger::addresses::StakePayload::Stake(x) => Self {
-        is_script: false,
-        hash: Some(x.to_string()),
-        pointer: None,
-      },
-      pallas::ledger::addresses::StakePayload::Script(x) => Self {
-        is_script: true,
-        hash: Some(x.to_string()),
-        pointer: None,
-      },
-    }
-  }
-}
-
+#[derive(Default)]
 #[napi(object)]
-pub struct AddressDiagnostic {
-  pub kind: String,
-  pub network: Option<String>,
-  pub payment_part: Option<ShelleyPart>,
-  pub delegation_part: Option<ShelleyPart>,
-  pub byron_cbor: Option<String>,
-}
-
-impl From<Address> for AddressDiagnostic {
-  fn from(value: Address) -> Self {
-    match value {
-      Address::Byron(x) => Self {
-        kind: "Byron".into(),
-        network: None,
-        payment_part: None,
-        delegation_part: None,
-        byron_cbor: Some(hex::encode(x.payload.as_slice())),
-      },
-      Address::Shelley(x) => Self {
-        kind: "Shelley".into(),
-        network: Some(network_to_string(x.network())),
-        payment_part: Some(x.payment().into()),
-        delegation_part: Some(x.delegation().into()),
-        byron_cbor: None,
-      },
-      Address::Stake(x) => Self {
-        kind: "Stake".into(),
-        network: Some(network_to_string(x.network())),
-        payment_part: None,
-        delegation_part: Some(x.payload().into()),
-        byron_cbor: None,
-      },
-    }
-  }
-}
-
-#[napi(object)]
-pub struct Output {
+pub struct Section {
+  pub topic: Option<String>,
+  pub identity: Option<String>,
   pub error: Option<String>,
+  pub attributes: Vec<Attribute>,
   pub bytes: Option<String>,
-  pub address: Option<AddressDiagnostic>,
+  pub children: Vec<Section>,
+}
+
+impl Section {
+  fn from_error(error: impl ToString) -> Self {
+    Self {
+      error: Some(error.to_string()),
+      ..Default::default()
+    }
+  }
+
+  fn new() -> Self {
+    Default::default()
+  }
+
+  fn with_topic(self, topic: impl ToString) -> Self {
+    Self {
+      topic: Some(topic.to_string()),
+      ..self
+    }
+  }
+
+  fn with_bytes(self, bytes: &[u8]) -> Self {
+    Self {
+      bytes: Some(hex::encode(bytes)),
+      ..self
+    }
+  }
+
+  fn with_attr(mut self, topic: impl ToString, value: impl ToString) -> Self {
+    self.attributes.push(Attribute {
+      topic: Some(topic.to_string()),
+      value: Some(value.to_string()),
+    });
+
+    self
+  }
+
+  fn with_maybe_attr(mut self, topic: impl ToString, value: Option<impl ToString>) -> Self {
+    self.attributes.push(Attribute {
+      topic: Some(topic.to_string()),
+      value: value.map(|v| v.to_string()),
+    });
+
+    self
+  }
+
+  fn try_build_child<F>(mut self, func: F) -> Self
+  where
+    F: FnOnce() -> anyhow::Result<Section>,
+  {
+    match func() {
+      Ok(x) => {
+        self.children.push(x);
+      }
+      Err(x) => self.error = Some(x.to_string()),
+    };
+
+    self
+  }
+
+  fn build_child<F>(mut self, func: F) -> Self
+  where
+    F: FnOnce() -> Section,
+  {
+    let child = func();
+    self.children.push(child);
+
+    self
+  }
+
+  fn collect_children<I>(mut self, iter: I) -> Self
+  where
+    I: Iterator<Item = Section>,
+  {
+    self.children = iter.collect();
+
+    self
+  }
 }
 
 #[napi]
-pub fn parse_address(raw: String) -> Output {
-  match Address::from_str(&raw) {
-    Ok(addr) => Output {
+pub fn parse_address(raw: String) -> address::Output {
+  match address::Address::from_str(&raw) {
+    Ok(addr) => address::Output {
       error: None,
       bytes: Some(hex::encode(addr.to_vec())),
       address: Some(addr.into()),
     },
-    Err(err) => Output {
+    Err(err) => address::Output {
       error: Some(err.to_string()),
       bytes: None,
       address: None,
     },
+  }
+}
+
+#[napi]
+pub fn safe_parse_tx(raw: String) -> Section {
+  match tx::parse(raw) {
+    Ok(x) => x,
+    Err(x) => x,
+  }
+}
+
+#[napi]
+pub fn safe_parse_block(raw: String) -> Section {
+  match block::parse(raw) {
+    Ok(x) => x,
+    Err(x) => x,
   }
 }
