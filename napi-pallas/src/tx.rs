@@ -55,7 +55,16 @@ fn tx_output_section(o: &MultiEraOutput) -> Section {
     .with_bytes(&o.encode())
     .with_attr("tx_output_address", o.address().unwrap())
     .with_attr("tx_output_lovelace", o.lovelace_amount())
-    .with_attr("tx_output_datum", o.datum())
+    .maybe_push_child(o.datum().map(|x| {
+      match x {
+        pallas::ledger::primitives::conway::PseudoDatumOption::Hash(x) => Section::new()
+          .with_topic("tx_output_datum")
+          .with_attr("tx_output_datum_hash", x),
+        pallas::ledger::primitives::conway::PseudoDatumOption::Data(x) => {
+          tx_plutus_datum_section(&x.0)
+        }
+      }
+    }))
     .build_child(|| {
       Section::new()
         .with_topic("tx_output_assets")
