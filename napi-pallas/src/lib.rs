@@ -85,12 +85,34 @@ impl Section {
     self
   }
 
+  fn push_child(mut self, child: Section) -> Self {
+    self.children.push(child);
+
+    self
+  }
+
+  fn maybe_push_child(mut self, child: Option<Section>) -> Self {
+    if let Some(child) = child {
+      self.children.push(child)
+    }
+
+    self
+  }
+
   fn build_child<F>(mut self, func: F) -> Self
   where
     F: FnOnce() -> Section,
   {
-    let child = func();
-    self.children.push(child);
+    self.push_child(func())
+  }
+
+  fn append_children<I>(mut self, iter: I) -> Self
+  where
+    I: Iterator<Item = Section>,
+  {
+    for c in iter {
+      self.children.push(c);
+    }
 
     self
   }

@@ -1,8 +1,15 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData, useSubmit } from "@remix-run/react";
 import * as server from "./block.server";
-import { Button, DataSection, TextArea } from "~/components";
+import {
+  Button,
+  DataSection,
+  logCuriosity,
+  RootSection,
+  TextArea,
+} from "~/components";
 import { KeyboardEventHandler } from "react";
+import TOPICS from "./block.topics";
 
 export const meta: MetaFunction = () => {
   return [
@@ -26,7 +33,7 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function Index() {
   const data: any = useActionData();
 
-  console.log(data);
+  logCuriosity(data);
 
   return (
     <main className="mt-10 px-4">
@@ -46,7 +53,7 @@ export default function Index() {
           </div>
         </Form>
       </div>
-      {!!data && <DataSection data={data} />}
+      {!!data && <RootSection data={data} topics={TOPICS} />}
     </main>
   );
 }
