@@ -8,6 +8,7 @@ extern crate napi_derive;
 mod address;
 mod block;
 mod tx;
+mod validations;
 
 #[derive(Default)]
 #[napi(object)]
@@ -143,11 +144,27 @@ pub fn parse_address(raw: String) -> address::Output {
   }
 }
 
+#[derive(Default)]
+#[napi(object)]
+pub struct SectionValidation {
+  pub section: Section,
+  pub validations: Validations,
+}
+
 #[napi]
-pub fn safe_parse_tx(raw: String) -> Section {
+pub fn safe_parse_tx(raw: String) -> SectionValidation {
   match tx::parse(raw) {
-    Ok(x) => x,
-    Err(x) => x,
+    Ok(x) => {
+      let (section, validations) = x;
+      SectionValidation {
+        section,
+        validations: validations,
+      }
+    }
+    Err(x) => SectionValidation {
+      section: x,
+      validations: Validations::new(),
+    },
   }
 }
 
@@ -156,5 +173,55 @@ pub fn safe_parse_block(raw: String) -> Section {
   match block::parse(raw) {
     Ok(x) => x,
     Err(x) => x,
+  }
+}
+
+#[derive(Default, Debug)]
+#[napi(object)]
+pub struct Validation {
+  pub name: String,
+  pub value: bool,
+  pub description: String,
+}
+
+impl Validation {
+  fn new() -> Self {
+    Default::default()
+  }
+
+  pub fn with_description(self, description: impl ToString) -> Self {
+    Self {
+      description: description.to_string(),
+      ..self
+    }
+  }
+
+  pub fn with_value(self, value: bool) -> Self {
+    Self { value, ..self }
+  }
+
+  pub fn with_name(self, name: impl ToString) -> Self {
+    Self {
+      name: name.to_string(),
+      ..self
+    }
+  }
+}
+
+#[derive(Debug, Default)]
+#[napi(object)]
+pub struct Validations {
+  pub validations: Vec<Validation>,
+}
+
+impl Validations {
+  pub fn new() -> Self {
+    Default::default()
+  }
+
+  pub fn add_new_validation(mut self, validation: Validation) -> Self {
+    self.validations.push(validation);
+
+    self
   }
 }

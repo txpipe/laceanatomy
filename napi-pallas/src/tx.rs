@@ -1,3 +1,6 @@
+use crate::validations::validate::validate;
+use crate::Validations;
+
 use super::Section;
 use pallas::{
   codec::utils::KeepRaw,
@@ -5,7 +8,7 @@ use pallas::{
   ledger::{
     primitives::{
       babbage::{Redeemer, RedeemerTag},
-      conway::{Metadatum, PlutusData, PlutusV1Script, VKeyWitness},
+      conway::{Metadatum, PlutusData, VKeyWitness},
       ToCanonicalJson,
     },
     traverse::{ComputeHash, MultiEraInput, MultiEraOutput, MultiEraTx},
@@ -98,8 +101,8 @@ fn print_metadatum(datum: &Metadatum) -> String {
     Metadatum::Int(x) => x.to_string(),
     Metadatum::Bytes(x) => hex::encode(x.as_slice()),
     Metadatum::Text(x) => x.to_owned(),
-    Metadatum::Array(x) => "[Array]".to_string(),
-    Metadatum::Map(x) => "[Map]".to_string(),
+    Metadatum::Array(_) => "[Array]".to_string(),
+    Metadatum::Map(_) => "[Map]".to_string(),
   }
 }
 
@@ -190,7 +193,8 @@ fn tx_witnesses_section(tx: &MultiEraTx<'_>) -> Section {
   Section::new()
     .with_topic("tx_witnesses")
     .append_children(tx.vkey_witnesses().iter().map(tx_vkey_witnesses_section))
-    .append_children(tx.redeemers().iter().map(tx_redeemer_section))
+    // TODO: Uncomment when branch with this issue fixed is used
+    // .append_children(tx.redeemers().iter().map(tx_redeemer_section))
     .append_children(tx.plutus_data().iter().map(tx_plutus_datum_section))
     .append_children(
       tx.plutus_v1_scripts()
@@ -209,11 +213,8 @@ fn tx_witnesses_section(tx: &MultiEraTx<'_>) -> Section {
     )
 }
 
-pub fn parse(raw: String) -> Result<Section, Section> {
+pub fn create_cbor_structure(tx: &MultiEraTx<'_>) -> Section {
   let out = Section::new().with_topic("cbor_parse").try_build_child(|| {
-    let cbor = hex::decode(raw)?;
-    let tx = MultiEraTx::decode(&cbor)?;
-
     let child = Section::new()
       .with_topic("tx")
       .with_attr("era", tx.era())
@@ -231,6 +232,27 @@ pub fn parse(raw: String) -> Result<Section, Section> {
 
     Ok(child)
   });
+  out
+}
 
-  Ok(out)
+pub fn parse(raw: String) -> Result<(Section, Validations), Section> {
+  let res_cbor = hex::decode(raw);
+  match res_cbor {
+    Ok(cbor) => {
+      let res_mtx = MultiEraTx::decode(&cbor);
+      match res_mtx {
+        Ok(mtx) => Ok((create_cbor_structure(&mtx), validate(&mtx))),
+        Err(e) => {
+          let mut err = Section::new();
+          err.error = Some(e.to_string());
+          Err(err)
+        }
+      }
+    }
+    Err(e) => {
+      let mut err = Section::new();
+      err.error = Some(e.to_string());
+      Err(err)
+    }
+  }
 }
