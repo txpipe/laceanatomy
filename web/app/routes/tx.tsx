@@ -1,8 +1,21 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, logCuriosity, RootSection } from "~/components";
+import {
+  Button,
+  logCuriosity,
+  RootSection,
+  ValidationAccordion,
+  ValidationCards,
+  ValidationTable,
+} from "../components";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
+
+export interface IValidation {
+  name: string;
+  value: boolean;
+  description: string;
+}
 
 export const meta: MetaFunction = () => {
   return [
@@ -13,9 +26,9 @@ export const meta: MetaFunction = () => {
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  let raw = formData.get("raw");
+  const raw = formData.get("raw");
 
-  if (!!raw) {
+  if (raw) {
     const res = server.safeParseTx(raw.toString());
     return json({ ...res, raw });
   } else {
@@ -41,9 +54,53 @@ function ExampleCard(props: { title: string; address: string }) {
 }
 
 export default function Index() {
-  const data: any = useActionData();
+  const data = useActionData();
 
   logCuriosity(data);
+
+  const validations: IValidation[] = [
+    { name: "Non empty inputs", value: true, description: "" },
+    {
+      name: "All inputs in utxos",
+      value: false,
+      description:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
+    },
+    { name: "Validity interval", value: true, description: "" },
+    { name: "Fee", value: true, description: "" },
+    {
+      name: "Preservation of value",
+      value: false,
+      description:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
+    },
+    {
+      name: "Min lovelace per UTxO",
+      value: false,
+      description:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
+    },
+    { name: "Output value size", value: true, description: "" },
+    { name: "Network Id", value: true, description: "" },
+    { name: "Tx size", value: true, description: "" },
+    { name: "Tx execution units", value: true, description: "" },
+    { name: "Minting", value: true, description: "" },
+    {
+      name: "Well formed",
+      value: false,
+      description:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
+    },
+    { name: "Script witness", value: true, description: "" },
+    { name: "Languages", value: true, description: "" },
+    {
+      name: "Auxiliary data hash",
+      value: false,
+      description:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
+    },
+    { name: "Script data hash", value: true, description: "" },
+  ];
 
   return (
     <main className="mt-10 px-4">
@@ -82,7 +139,15 @@ export default function Index() {
         </>
       )}
 
-      {!!data && <RootSection data={data} topics={TOPICS} />}
+      {!!data && (
+        <>
+          <h4 className="text-3xl">Tx Validations</h4>
+          <ValidationAccordion validations={validations} />
+          <ValidationTable validations={validations} />
+          <ValidationCards validations={validations} />
+          <RootSection data={data} topics={TOPICS} />
+        </>
+      )}
     </main>
   );
 }

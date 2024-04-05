@@ -1,5 +1,6 @@
-import { PropsWithChildren } from "react";
 import { Attribute, type Section } from "napi-pallas";
+import { PropsWithChildren, useState } from "react";
+import { IValidation } from "./routes/tx";
 
 export type TopicMeta = {
   title: string;
@@ -43,7 +44,7 @@ export function HexBlock(props: { name: string; value: string }) {
   );
 }
 
-export function Paragraph(props: PropsWithChildren<{}>) {
+export function Paragraph(props: PropsWithChildren) {
   return <p className="text-gray-600 text-xl">{props.children}</p>;
 }
 
@@ -59,13 +60,11 @@ export function RootSection(props: {
     <>
       <h4 className="text-3xl">{topic.title}</h4>
       {!props.data.error && topic.description}
-
       {!!props.data.error && (
         <div className="block mt-8 p-4 border-2 bg-red-200 border-red-700 shadow shadow-black rounded-lg text-2xl">
           {props.data.error}
         </div>
       )}
-
       {!!props.data.bytes && (
         <HexBlock name="bytes (hex)" value={props.data.bytes} />
       )}
@@ -84,30 +83,46 @@ export function DataSection(props: {
   topics: Record<string, TopicMeta>;
 }) {
   const topic = getTopicMeta(props.data.topic, props.topics);
+  const [open, setOpen] = useState(true);
+  const handleClick = () => setOpen(!open);
 
   return (
     <blockquote className="mt-6 md:border-l-4 md:px-10 py-4 border-dashed">
-      <h4 className="text-3xl">{topic.title}</h4>
-      {topic.description}
-      {!!props.data.error && (
-        <div className="block mt-8 p-4 border-2 bg-red-200 border-red-700 shadow shadow-black rounded-lg text-2xl">
-          {props.data.error}
+      <button
+        className={`flex items-center w-full text-left select-none duration-300`}
+        onClick={handleClick}
+      >
+        <div
+          className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
+        >
+          {open ? "▼" : "▶"}
         </div>
-      )}
-      {props.data.attributes?.map((c) => (
-        <PropBlock key={c.topic} data={c} topics={props.topics} />
-      ))}
-
-      {props.data.children?.map((c) => (
-        <DataSection key={c.identity} data={c} topics={props.topics} />
-      ))}
-
-      {!props.data.attributes?.length && !props.data.children?.length && (
-        <EmptyBlock />
-      )}
-
-      {!!props.data.bytes && (
-        <HexBlock name={`${topic.title} CBOR (hex)`} value={props.data.bytes} />
+        <h4 className="text-3xl">{topic.title}</h4>
+      </button>
+      {open && (
+        <>
+          {topic.description}
+          {!!props.data.error && (
+            <div className="block mt-8 p-4 border-2 bg-red-200 border-red-700 shadow shadow-black rounded-lg text-2xl">
+              {props.data.error}
+            </div>
+          )}
+          {props.data.attributes?.map((c) => (
+            <PropBlock key={c.topic} data={c} topics={props.topics} />
+          ))}
+          {props.data.children?.map((c) => (
+            <DataSection key={c.identity} data={c} topics={props.topics} />
+          ))}
+          {!props.data.attributes?.length && !props.data.children?.length && (
+            <EmptyBlock />
+          )}
+          {!!props.data.bytes && (
+            <HexBlock
+              name={`${topic.title} CBOR (hex)`}
+              value={props.data.bytes}
+            />
+          )}
+        </>
       )}
     </blockquote>
   );
@@ -145,7 +160,7 @@ export function TextArea(props: { name: string; placeholder?: string }) {
 }
 
 export function logCuriosity(data: any) {
-  if (!!data) {
+  if (data) {
     console.group("CURIOUS FELLOW, EH?");
     console.log("hello there! want to learn how we parse the data?");
     console.log(
@@ -158,4 +173,186 @@ export function logCuriosity(data: any) {
     console.log(data);
     console.groupEnd();
   }
+}
+
+export function ValidationTable(props: { validations: IValidation[] }) {
+  return (
+    <table className="w-full table-auto border-2 border-separate border-black rounded-lg border-spacing-0 my-8 shadow shadow-black border-b-4">
+      <thead>
+        <tr>
+          <th className="text-left text-base uppercase font-medium text-black p-3 bg-gray-200 border-y border-black rounded-tl-md ">
+            Validation
+          </th>
+          <th className="text-left text-base uppercase font-medium text-black py-3 bg-gray-200 border-y border-black ">
+            Result
+          </th>
+          <th className="text-left text-base uppercase font-medium text-black p-3 bg-gray-200 border-y border-black rounded-tr-md ">
+            Description
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.validations.map((v) => (
+          <tr
+            key={v.name}
+            className={`${v.value ? "bg-green-200 " : "bg-red-200 "}`}
+          >
+            <td className="p-3 text-base text-black border-y border-black">
+              {v.name}
+            </td>
+            <td className="p-3 text-base text-black border-y border-black text-center">
+              {v.value ? " ✔" : "✘"}
+            </td>
+            <td className="p-3 text-base text-black border-y border-black">
+              {v.description}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function ValidationCards(props: { validations: IValidation[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-8">
+      {props.validations.map((v) => (
+        <div
+          key={v.name}
+          className={`p-4 border-2 rounded-lg shadow shadow-black 
+          ${
+            v.value
+              ? "bg-green-200 border-green-700"
+              : "bg-red-200 border-red-700"
+          }
+          `}
+        >
+          <h4 className="text-xl ">
+            {v.value ? "✔" : "✘"} {v.name}
+          </h4>
+          <p className="text-gray-600">
+            {v.description !== "" ? v.description : "Successful"}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AccordionItem2({ validation }: { validation: IValidation }) {
+  const [open, setOpen] = useState(false);
+  const handleClick = () => setOpen(!open);
+  return (
+    <div key={validation.name} className="accordion-item">
+      <div className="flex justify-between group">
+        <button
+          className={`flex items-center justify-between w-full px-8 pt-2 text-left select-none duration-300 ${
+            validation.value
+              ? "group-hover:text-green-600"
+              : "group-hover:text-red-600"
+          }`}
+          onClick={handleClick}
+        >
+          {validation.value ? "✔" : "✘"}&nbsp;&nbsp;{validation.name}
+        </button>
+        <div
+          className={`m-4 h-8 w-8 border-2 border-black inline-flex items-center justify-center 
+        rounded-full shadow-tiny shadow-black bg-white duration-300 
+        ${open ? "rotate-45" : ""}
+        ${
+          validation.value
+            ? "group-hover:bg-green-400"
+            : "group-hover:bg-red-400"
+        }
+        `}
+        >
+          +
+        </div>
+      </div>
+      {open && (
+        <div className="accordion-item-content">
+          <p className="text-gray-600 px-8 pb-4">
+            {validation.description !== ""
+              ? validation.description
+              : "Successful"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ValidationAccordion2(props: { validations: IValidation[] }) {
+  return (
+    <div
+      className="relative w-full mx-auto lg:col-span-2 text-xl font-medium divide-y-2 
+    divide-black border-2 border-black mt-12 rounded-3xl overflow-hidden shadow my-8"
+    >
+      {props.validations.map((v) => (
+        <AccordionItem2 key={v.name} validation={v} />
+      ))}
+    </div>
+  );
+}
+
+export function AccordionItem({ validation }: { validation: IValidation }) {
+  const [open, setOpen] = useState(false);
+  const handleClick = () => setOpen(!open);
+  return (
+    <div
+      key={validation.name}
+      className={`px-3 py-2 border-2 rounded-xl 
+      shadow shadow-black 
+        ${
+          validation.value
+            ? "bg-green-200 border-green-700"
+            : "bg-red-200 border-red-700"
+        }
+    `}
+    >
+      <div className="flex justify-between group">
+        <button
+          className={`flex items-center justify-between w-full px-4 pt-2 text-left select-none duration-300 ${
+            validation.value
+              ? "text-green-950 group-hover:text-green-500"
+              : "text-red-950 group-hover:text-red-500"
+          }`}
+          onClick={handleClick}
+        >
+          {validation.value ? "✔" : "✘"}&nbsp;&nbsp;{validation.name}
+        </button>
+        <div
+          className={`m-4 h-8 w-8 border-2 border-black inline-flex items-center justify-center 
+        rounded-full shadow-tiny shadow-black bg-white duration-300 
+        ${open ? "rotate-45 duration-300" : ""}
+        ${
+          validation.value
+            ? "group-hover:bg-green-400"
+            : "group-hover:bg-red-400"
+        }
+        `}
+        >
+          +
+        </div>
+      </div>
+      <div className="accordion-item-content transition-all ease-in-out transform scale-100 opacity-100">
+        {open && (
+          <p className="text-gray-600 pl-8 pb-4">{validation.description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ValidationAccordion(props: { validations: IValidation[] }) {
+  return (
+    <div
+      className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
+                    text-xl font-medium mt-10 overflow-hidden pb-1"
+    >
+      {props.validations.map((v) => (
+        <AccordionItem key={v.name} validation={v} />
+      ))}
+    </div>
+  );
 }
