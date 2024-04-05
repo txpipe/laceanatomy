@@ -17,8 +17,6 @@ fn validate_babbage_ins_not_empty(mtx: &BabbageMintedTx) -> Validation {
 }
 
 pub fn validate_babbage(mtx_b: &BabbageMintedTx) -> Validations {
-  let out = Validations::new()
-    .add_new_validation(validate_babbage_ins_not_empty(&mtx_b))
-    .add_new_validation(validate_babbage_ins_not_empty(&mtx_b));
+  let out = Validations::new().add_new_validation(validate_babbage_ins_not_empty(&mtx_b));
   out
 }

@@ -53,18 +53,37 @@ export const P1 = Paragraph;
 export function RootSection(props: {
   data: Section;
   topics: Record<string, TopicMeta>;
+  validations: IValidation[];
 }) {
+  const [open, setOpen] = useState(false);
+  const handleClick = () => setOpen(!open);
   const topic = getTopicMeta(props.data.topic, props.topics);
 
+  if (props.data.error)
+    return (
+      <div className="block mt-8 p-4 border-2 bg-red-200 border-red-700 shadow shadow-black rounded-lg text-2xl">
+        <h4 className="text-3xl">{topic.description}</h4>
+        {props.data.error}
+      </div>
+    );
+
   return (
-    <>
+    <div className="flex flex-col">
+      <div className="mb-14">
+        <button
+          className={`flex items-center w-full text-left select-none duration-300`}
+          onClick={handleClick}
+        >
+          <div
+            className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
+          >
+            {open ? "▼" : "▶"}
+          </div>
+          <h4 className="text-3xl ">Tx Validations</h4>
+        </button>
+        {open && <ValidationAccordion validations={props.validations} />}
+      </div>
       <h4 className="text-3xl">{topic.title}</h4>
-      {!props.data.error && topic.description}
-      {!!props.data.error && (
-        <div className="block mt-8 p-4 border-2 bg-red-200 border-red-700 shadow shadow-black rounded-lg text-2xl">
-          {props.data.error}
-        </div>
-      )}
       {!!props.data.bytes && (
         <HexBlock name="bytes (hex)" value={props.data.bytes} />
       )}
@@ -74,7 +93,7 @@ export function RootSection(props: {
       {props.data.children?.map((c) => (
         <DataSection key={c.identity} data={c} topics={props.topics} />
       ))}
-    </>
+    </div>
   );
 }
 
