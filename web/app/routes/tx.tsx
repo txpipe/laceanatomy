@@ -14,6 +14,11 @@ export interface IValidations {
   validations: IValidation[];
 }
 
+export interface DataProps extends server.Section {
+  validations: IValidation[];
+  raw?: string;
+}
+
 export const meta: MetaFunction = () => {
   return [
     { title: "Cardano Tx - Lovelace Anatomy" },
@@ -55,9 +60,9 @@ function ExampleCard(props: { title: string; address: string }) {
 }
 
 export default function Index() {
-  const data = useActionData();
+  const data: DataProps | undefined = useActionData();
 
-  logCuriosity(data);
+  if (data) logCuriosity(data);
 
   const validations: IValidation[] = data?.validations || [];
 

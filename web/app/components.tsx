@@ -1,6 +1,6 @@
 import { Attribute, type Section } from "napi-pallas";
 import { PropsWithChildren, useState } from "react";
-import { IValidation } from "./routes/tx";
+import { DataProps, IValidation } from "./routes/tx";
 
 export type TopicMeta = {
   title: string;
@@ -178,7 +178,7 @@ export function TextArea(props: { name: string; placeholder?: string }) {
   );
 }
 
-export function logCuriosity(data: any) {
+export function logCuriosity(data: DataProps) {
   if (data) {
     console.group("CURIOUS FELLOW, EH?");
     console.log("hello there! want to learn how we parse the data?");
