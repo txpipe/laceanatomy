@@ -12,10 +12,12 @@ export interface IValidation {
 
 export interface IValidations {
   validations: IValidation[];
+  era: string;
 }
 
 export interface DataProps extends server.Section {
   validations: IValidation[];
+  era: string;
   raw?: string;
 }
 
@@ -65,6 +67,7 @@ export default function Index() {
   if (data) logCuriosity(data);
 
   const validations: IValidation[] = data?.validations || [];
+  const era = data?.era || "";
 
   return (
     <main className="mt-10 px-4">
@@ -104,7 +107,12 @@ export default function Index() {
       )}
 
       {!!data && (
-        <RootSection data={data} topics={TOPICS} validations={validations} />
+        <RootSection
+          data={data}
+          topics={TOPICS}
+          validations={validations}
+          era={era}
+        />
       )}
     </main>
   );

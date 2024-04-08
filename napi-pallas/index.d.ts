@@ -46,4 +46,5 @@ export interface Validation {
 }
 export interface Validations {
   validations: Array<Validation>
+  era: string
 }
