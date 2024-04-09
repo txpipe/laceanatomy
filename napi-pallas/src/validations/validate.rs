@@ -19,9 +19,13 @@ pub fn set_description(res: &Result<(), ValidationError>, success: String) -> St
 pub fn validate(mtx: &MultiEraTx<'_>) -> Validations {
   match &mtx {
     MultiEraTx::Byron(mtxp) => validate_byron(&mtxp),
-    MultiEraTx::AlonzoCompatible(mtx_sma, Era::Shelley)
-    | MultiEraTx::AlonzoCompatible(mtx_sma, Era::Allegra)
-    | MultiEraTx::AlonzoCompatible(mtx_sma, Era::Mary) => validate_shelley_ma(&mtx_sma),
+    MultiEraTx::AlonzoCompatible(mtx_sma, Era::Shelley) => {
+      validate_shelley_ma(&mtx_sma, &Era::Shelley)
+    }
+    MultiEraTx::AlonzoCompatible(mtx_sma, Era::Allegra) => {
+      validate_shelley_ma(&mtx_sma, &Era::Allegra)
+    }
+    MultiEraTx::AlonzoCompatible(mtx_sma, Era::Mary) => validate_shelley_ma(&mtx_sma, &Era::Mary),
     MultiEraTx::AlonzoCompatible(mtx_a, Era::Alonzo) => validate_alonzo(&mtx_a),
     MultiEraTx::Babbage(mtx_b) => validate_babbage(&mtx_b),
     MultiEraTx::Conway(mtx_c) => validate_conway(&mtx_c),
