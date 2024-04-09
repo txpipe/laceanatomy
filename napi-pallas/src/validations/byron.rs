@@ -25,6 +25,12 @@ fn get_tx_size(tx: &Tx) -> u64 {
 
 // & The following validation requires the size and the protocol parameters
 fn validate_byron_size(size: &u64, prot_pps: &ByronProtParams) -> Validation {
+  if size == &0 {
+    return Validation::new()
+      .with_name("Transaction size".to_string())
+      .with_value(false)
+      .with_description("The transaction size could not be obtained.".to_string());
+  }
   let res = check_size(&size, &prot_pps);
   let description = set_description(
     &res,
