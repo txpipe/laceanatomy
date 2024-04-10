@@ -12,7 +12,7 @@ hex = "0.4.3"
 # Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
 napi = { version = "2.12.2", default-features = false, features = ["napi4"] }
 napi-derive = "2.12.2"
-pallas = { git = "https://github.com/alegadea/pallas.git", rev = "54ffc77" , features = ["unstable"]}
+pallas = { git = "https://github.com/txpipe/pallas.git", rev = "2f97cbe" , features = ["unstable"]}
 
 [build-dependencies]
 napi-build = "2.0.1"

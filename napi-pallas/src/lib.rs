@@ -212,6 +212,7 @@ impl Validation {
 #[napi(object)]
 pub struct Validations {
   pub validations: Vec<Validation>,
+  pub era: String,
 }
 
 impl Validations {
@@ -223,5 +224,12 @@ impl Validations {
     self.validations.push(validation);
 
     self
+  }
+
+  pub fn with_era(self, era: impl ToString) -> Self {
+    Self {
+      era: era.to_string(),
+      ..self
+    }
   }
 }
