@@ -1,6 +1,6 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, logCuriosity, RootSection } from "../components";
+import { Button, RootSection, logCuriosity } from "../components";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
 
@@ -12,10 +12,12 @@ export interface IValidation {
 
 export interface IValidations {
   validations: IValidation[];
+  era: string;
 }
 
 export interface DataProps extends server.Section {
   validations: IValidation[];
+  era: string;
   raw?: string;
 }
 
@@ -65,50 +67,7 @@ export default function Index() {
   if (data) logCuriosity(data);
 
   const validations: IValidation[] = data?.validations || [];
-
-  const validations: IValidation[] = [
-    { name: "Non empty inputs", value: true, description: "Sucessful" },
-    {
-      name: "All inputs in utxos",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Validity interval", value: true, description: "Sucessful" },
-    { name: "Fee", value: true, description: "Sucessful" },
-    {
-      name: "Preservation of value",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    {
-      name: "Min lovelace per UTxO",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Output value size", value: true, description: "Successful" },
-    { name: "Network Id", value: true, description: "Successful" },
-    { name: "Tx size", value: true, description: "Successful" },
-    { name: "Tx execution units", value: true, description: "Successful" },
-    { name: "Minting", value: true, description: "Successful" },
-    {
-      name: "Well formed",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Script witness", value: true, description: "Successful" },
-    { name: "Languages", value: true, description: "Successful" },
-    {
-      name: "Auxiliary data hash",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Script data hash", value: true, description: "Successful" },
-  ];
+  const era = data?.era || "";
 
   return (
     <main className="mt-10 px-4">
@@ -148,7 +107,12 @@ export default function Index() {
       )}
 
       {!!data && (
-        <RootSection data={data} topics={TOPICS} validations={validations} />
+        <RootSection
+          data={data}
+          topics={TOPICS}
+          validations={validations}
+          era={era}
+        />
       )}
     </main>
   );
