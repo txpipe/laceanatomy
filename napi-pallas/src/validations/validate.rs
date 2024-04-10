@@ -12,7 +12,7 @@ use super::shelley_ma::validate_shelley_ma;
 pub fn set_description(res: &Result<(), ValidationError>, success: String) -> String {
   match res {
     Ok(_) => success,
-    Err(e) => format!("Error {:?}", e),
+    Err(e) => format!("Error: {:?}", e),
   }
 }
 

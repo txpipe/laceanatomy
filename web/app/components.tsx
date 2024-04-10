@@ -54,6 +54,7 @@ export function RootSection(props: {
   data: Section;
   topics: Record<string, TopicMeta>;
   validations: IValidation[];
+  era: string;
 }) {
   const [open, setOpen] = useState(false);
   const handleClick = () => setOpen(!open);
@@ -79,7 +80,9 @@ export function RootSection(props: {
           >
             {open ? "▼" : "▶"}
           </div>
-          <h4 className="text-3xl ">Tx Validations</h4>
+          <div className="flex justify-between w-full">
+            <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
+          </div>
         </button>
         {open && <ValidationAccordion validations={props.validations} />}
       </div>
