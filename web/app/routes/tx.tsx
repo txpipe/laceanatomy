@@ -1,12 +1,6 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { useState } from "react";
-import {
-  Button,
-  logCuriosity,
-  RootSection,
-  ValidationAccordion,
-} from "../components";
+import { Button, logCuriosity, RootSection } from "../components";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
 
@@ -18,6 +12,11 @@ export interface IValidation {
 
 export interface IValidations {
   validations: IValidation[];
+}
+
+export interface DataProps extends server.Section {
+  validations: IValidation[];
+  raw?: string;
 }
 
 export const meta: MetaFunction = () => {
@@ -32,8 +31,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const raw = formData.get("raw");
 
   if (raw) {
-    const res = server.safeParseTx(raw.toString());
-    return json({ ...res, raw });
+    const { section, validations } = server.safeParseTx(raw.toString());
+    return json({
+      ...section,
+      raw,
+      ...validations,
+    });
   } else {
     return json({ error: "an empty value? seriously?" });
   }
@@ -57,12 +60,11 @@ function ExampleCard(props: { title: string; address: string }) {
 }
 
 export default function Index() {
-  const data = useActionData();
+  const data: DataProps | undefined = useActionData();
 
-  const [open, setOpen] = useState(false);
-  const handleClick = () => setOpen(!open);
+  if (data) logCuriosity(data);
 
-  logCuriosity(data);
+  const validations: IValidation[] = data?.validations || [];
 
   const validations: IValidation[] = [
     { name: "Non empty inputs", value: true, description: "Sucessful" },
@@ -146,23 +148,7 @@ export default function Index() {
       )}
 
       {!!data && (
-        <div className="flex flex-col">
-          <div className="mb-14">
-            <button
-              className={`flex items-center w-full text-left select-none duration-300`}
-              onClick={handleClick}
-            >
-              <div
-                className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
-              >
-                {open ? "▼" : "▶"}
-              </div>
-              <h4 className="text-3xl ">Tx Validations</h4>
-            </button>
-            {open && <ValidationAccordion validations={validations} />}
-          </div>
-          <RootSection data={data} topics={TOPICS} />
-        </div>
+        <RootSection data={data} topics={TOPICS} validations={validations} />
       )}
     </main>
   );
