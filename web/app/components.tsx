@@ -54,6 +54,7 @@ export function RootSection(props: {
   data: Section;
   topics: Record<string, TopicMeta>;
   validations: IValidation[];
+  era: string;
 }) {
   const [open, setOpen] = useState(false);
   const handleClick = () => setOpen(!open);
@@ -79,7 +80,9 @@ export function RootSection(props: {
           >
             {open ? "▼" : "▶"}
           </div>
-          <h4 className="text-3xl ">Tx Validations</h4>
+          <div className="flex justify-between w-full">
+            <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
+          </div>
         </button>
         {open && <ValidationAccordion validations={props.validations} />}
       </div>
@@ -219,25 +222,32 @@ export function AccordionItem({ validation }: { validation: IValidation }) {
           onClick={handleClick}
         >
           {validation.value ? "✔" : "✘"}&nbsp;&nbsp;{validation.name}
-        </button>
-        <div
-          className={`m-4 h-8 w-8 border-2 border-black inline-flex items-center justify-center 
-        rounded-full shadow-tiny shadow-black bg-white duration-300 
-        ${open ? "rotate-45 duration-300" : ""}
-        ${
-          validation.value
-            ? "group-hover:bg-green-400"
-            : "group-hover:bg-red-400"
-        }
+          <div
+            className={`m-4 h-8 w-8 border-2 border-black inline-flex items-center justify-center 
+          rounded-full shadow-tiny shadow-black bg-white duration-300 text-black
+          ${open ? "rotate-45 duration-300" : ""}
+          ${
+            validation.value
+              ? "group-hover:bg-green-400"
+              : "group-hover:bg-red-400"
+          }
         `}
-        >
-          +
-        </div>
+          >
+            +
+          </div>
+        </button>
       </div>
-      <div className="accordion-item-content transition-all ease-in-out transform scale-100 opacity-100">
-        {open && (
-          <p className="text-gray-600 pl-8 pb-4">{validation.description}</p>
-        )}
+      <div
+        style={{
+          maxHeight: open ? "500px" : "0",
+          overflow: "hidden",
+          transition: open
+            ? "max-height 0.5s ease-in"
+            : "max-height 0.1s ease-out",
+        }}
+        className="overflow-hidden accordion-item-content "
+      >
+        <p className="text-gray-600 pl-8 pb-4">{validation.description}</p>
       </div>
     </div>
   );
@@ -247,7 +257,7 @@ export function ValidationAccordion(props: { validations: IValidation[] }) {
   return (
     <div
       className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
-                    text-xl font-medium mt-10 overflow-hidden pb-1"
+        accordion text-xl font-medium mt-10 overflow-hidden pb-1"
     >
       {props.validations.map((v) => (
         <AccordionItem key={v.name} validation={v} />
