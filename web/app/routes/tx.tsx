@@ -1,6 +1,6 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, logCuriosity, RootSection } from "../components";
+import { Button, RootSection, logCuriosity } from "../components";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
 
