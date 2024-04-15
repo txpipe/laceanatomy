@@ -1,4 +1,4 @@
-use crate::{Validation, Validations};
+use crate::{Validation, ValidationContext, Validations};
 use pallas::{
   applying::{
     byron::{
@@ -120,15 +120,15 @@ fn validate_byron_fees(
     .with_description(description);
 }
 
-pub fn validate_byron(mtxp: &MintedTxPayload) -> Validations {
+pub fn validate_byron(mtxp: &MintedTxPayload, context: ValidationContext) -> Validations {
   let tx: &Tx = &mtxp.transaction;
   let size: &u64 = &get_tx_size(&tx);
   let prot_pps: ByronProtParams = ByronProtParams {
     fee_policy: FeePolicy {
-      summand: 155381,
-      multiplier: 44,
+      summand: context.min_fee_b as u64,
+      multiplier: context.min_fee_a as u64,
     },
-    max_tx_size: 16384,
+    max_tx_size: context.max_tx_size as u64,
   };
 
   let out = Validations::new()

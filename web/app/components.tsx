@@ -1,6 +1,14 @@
 import { Attribute, type Section } from "napi-pallas";
-import { PropsWithChildren, useState } from "react";
-import { DataProps, IValidation } from "./routes/tx";
+import { PropsWithChildren, useEffect, useState } from "react";
+import {
+  DataProps,
+  EraType,
+  IContext,
+  IValidation,
+  NetworkType,
+  ProtocolType,
+  TabType,
+} from "./interfaces";
 
 export type TopicMeta = {
   title: string;
@@ -212,14 +220,16 @@ export function AccordionItem({ validation }: { validation: IValidation }) {
         }
     `}
     >
-      <div className="flex justify-between group">
-        <button
+      <button
+        className="w-full flex justify-between group"
+        onClick={handleClick}
+      >
+        <div
           className={`flex items-center justify-between w-full px-4 pt-2 text-left select-none duration-300 ${
             validation.value
               ? "text-green-950 group-hover:text-green-500"
               : "text-red-950 group-hover:text-red-500"
           }`}
-          onClick={handleClick}
         >
           {validation.value ? "✔" : "✘"}&nbsp;&nbsp;{validation.name}
           <div
@@ -235,8 +245,8 @@ export function AccordionItem({ validation }: { validation: IValidation }) {
           >
             +
           </div>
-        </button>
-      </div>
+        </div>
+      </button>
       <div
         style={{
           maxHeight: open ? "500px" : "0",
@@ -262,6 +272,205 @@ export function ValidationAccordion(props: { validations: IValidation[] }) {
       {props.validations.map((v) => (
         <AccordionItem key={v.name} validation={v} />
       ))}
+    </div>
+  );
+}
+
+export function ConfigsModal({
+  closeModal,
+  protocolParams,
+  changeParam,
+  otherContext,
+  setOtherContext,
+}: {
+  closeModal: () => void;
+  protocolParams: ProtocolType[];
+  changeParam: (
+    index: number
+  ) => (e: React.ChangeEvent<HTMLInputElement>) => void;
+  otherContext: IContext;
+  setOtherContext: (c: IContext) => void;
+}) {
+  // To close config modal on esc press
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeModal]);
+
+  return (
+    <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-70" />
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-3/4 text-center ring-2 ring-inset ring-black text-black bg-white shadow-small rounded-xl p-8">
+          <h3 className="text-4xl">Tx Validation Configurations</h3>
+          <button
+            className="absolute right-5 top-3 text-4xl cursor-pointer rotate-45 box-border"
+            onClick={closeModal}
+          >
+            +
+          </button>
+          <Tabs
+            otherContext={otherContext}
+            protocolParams={protocolParams}
+            changeParam={changeParam}
+            setOtherContext={setOtherContext}
+          />
+          <button
+            type="submit"
+            className={`text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none 
+                  hover:bg-info-400 hover:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400
+                  mt-3`}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tabs({
+  otherContext,
+  protocolParams,
+  changeParam,
+  setOtherContext,
+}: {
+  otherContext: IContext;
+  protocolParams: ProtocolType[];
+  changeParam: (
+    index: number
+  ) => (e: React.ChangeEvent<HTMLInputElement>) => void;
+  setOtherContext: (c: IContext) => void;
+}) {
+  const tabs = ["Protocol Parameters", "Other Context"];
+  const networks = ["Mainnet", "Preprod", "Preview"];
+  const eras = ["Byron", "Shelley MA", "Alonzo", "Babbage", "Conway"];
+  const [selected, setSelected] = useState<TabType>("Protocol Parameters");
+
+  const changeSelected = (tab: TabType) => () => setSelected(tab);
+  const changeNetwork = (value: NetworkType) => () =>
+    setOtherContext({ ...otherContext, selectedNetwork: value });
+  const changeEra = (value: EraType) => () =>
+    setOtherContext({ ...otherContext, selectedEra: value });
+  const changeBlockSlot = (value: string) => {
+    setOtherContext({ ...otherContext, blockSlot: Number(value) });
+  };
+
+  return (
+    <div className="flex flex-col mt-5 justify-center">
+      <div className="flex gap-3 justify-center">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={changeSelected(tab as TabType)}
+            className={`text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none 
+          hover:bg-blue-200 focus:bg-blue-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400
+            ${selected === tab ? "bg-blue-400" : ""}`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 p-8 border-2 border-black rounded-2xl shadow">
+        <div
+          className={`grid xl:grid-cols-4 lg:grid-cols-2 gap-3 text-left w-full overflow-y-auto h-80 + ${
+            selected === TabType.ProtocolParameters ? "block" : "hidden"
+          }`}
+        >
+          {protocolParams.map((param, index) => (
+            <div key={param.name}>
+              <label htmlFor={param.name} className="text-lg">
+                {param.name.replace(/_/g, " ")}
+              </label>
+              <input
+                id={param.name}
+                name={param.name}
+                type="number"
+                value={Number(param.value).toString() ?? 0}
+                onChange={changeParam(index)}
+                className="block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
+                  focus:bg-pink-200 hover:bg-pink-200"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div
+          className={`text-left flex flex-col gap-3 ${
+            selected === TabType.Others ? "block" : "hidden"
+          }`}
+        >
+          <div>
+            <div className="text-xl">Select a Network</div>
+            {/* To get the network from the form*/}
+            <input
+              value={otherContext.selectedNetwork}
+              name="Network"
+              className="hidden"
+            />
+            <div className="md:flex gap-4 p-2 grid grid-cols-2">
+              {networks.map((net) => (
+                <button
+                  key={net}
+                  type="button"
+                  name="network"
+                  onClick={changeNetwork(net as NetworkType)}
+                  className={`text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none 
+                  hover:bg-info-400 hover:bg-pink-200 focus:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400
+                  ${otherContext.selectedNetwork === net ? "bg-pink-400" : ""}
+                  `}
+                >
+                  {net}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-xl">Select an Era</div>
+            {/* To get the era from the form*/}
+            <input
+              value={otherContext.selectedEra}
+              name="Era"
+              className="hidden"
+            />
+            <div className="xl:flex gap-4 p-2 grid grid-cols-2">
+              {eras.map((era) => (
+                <button
+                  key={era}
+                  type="button"
+                  onClick={changeEra(era as EraType)}
+                  className={`text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none 
+                  hover:bg-info-400 hover:bg-pink-200 focus:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400
+                  ${otherContext.selectedEra === era ? "bg-pink-400" : ""}
+                  `}
+                >
+                  {era}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-xl">Select a Block Slot</div>
+            <input
+              type="number"
+              name="Block_slot"
+              value={otherContext.blockSlot}
+              onChange={(e) => changeBlockSlot(e.target.value)}
+              className="block w-full px-4 py-2 mt-4 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
+                focus:bg-pink-200"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

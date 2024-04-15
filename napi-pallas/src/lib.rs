@@ -12,6 +12,45 @@ mod validations;
 
 #[derive(Default)]
 #[napi(object)]
+pub struct ValidationContext {
+  pub epoch: i64,
+  pub min_fee_a: i64,
+  pub min_fee_b: i64,
+  pub max_block_size: i64,
+  pub max_tx_size: i64,
+  pub max_block_header_size: i64,
+  pub key_deposit: i64,
+  pub pool_deposit: i64,
+  pub e_max: i64,
+  pub n_opt: i64,
+  pub a0: i64,
+  pub rho: i64,
+  pub tau: i64,
+  pub decentralisation_param: i64,
+  pub extra_entropy: i64,
+  pub protocol_major_ver: i64,
+  pub protocol_minor_ver: i64,
+  pub min_utxo: i64,
+  pub min_pool_cost: i64,
+  pub price_mem: i64,
+  pub price_step: i64,
+  pub max_tx_ex_mem: u32,
+  pub max_tx_ex_steps: i64,
+  pub max_block_ex_mem: i64,
+  pub max_block_ex_steps: i64,
+  pub max_val_size: i64,
+  pub collateral_percent: i64,
+  pub max_collateral_inputs: i64,
+  pub coins_per_utxo_size: i64,
+  pub coins_per_utxo_word: i64,
+
+  pub network: String,
+  pub era: String,
+  pub block_slot: i64,
+}
+
+#[derive(Default)]
+#[napi(object)]
 pub struct Attribute {
   pub topic: Option<String>,
   pub value: Option<String>,
@@ -152,8 +191,8 @@ pub struct SectionValidation {
 }
 
 #[napi]
-pub fn safe_parse_tx(raw: String) -> SectionValidation {
-  match tx::parse(raw) {
+pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidation {
+  match tx::parse(raw, context) {
     Ok(x) => {
       let (section, validations) = x;
       SectionValidation {

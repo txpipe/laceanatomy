@@ -1,25 +1,11 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, RootSection, logCuriosity } from "../components";
+import { useState } from "react";
+import SettingsIcon from "../../public/settings.svg";
+import { Button, ConfigsModal, RootSection, logCuriosity } from "../components";
+import { DataProps, IContext, IValidation, ProtocolType } from "../interfaces";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
-
-export interface IValidation {
-  name: string;
-  value: boolean;
-  description: string;
-}
-
-export interface IValidations {
-  validations: IValidation[];
-  era: string;
-}
-
-export interface DataProps extends server.Section {
-  validations: IValidation[];
-  era: string;
-  raw?: string;
-}
 
 export const meta: MetaFunction = () => {
   return [
@@ -31,9 +17,45 @@ export const meta: MetaFunction = () => {
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const raw = formData.get("raw");
+  const era = formData.get("Era");
+  const net = formData.get("Network");
 
   if (raw) {
-    const { section, validations } = server.safeParseTx(raw.toString());
+    const { section, validations } = server.safeParseTx(raw.toString(), {
+      epoch: Number(formData.get("Epoch")),
+      minFeeA: Number(formData.get("Min_fee_a")),
+      minFeeB: Number(formData.get("Min_fee_b")),
+      maxBlockSize: Number(formData.get("Max_block_size")),
+      maxTxSize: Number(formData.get("Max_tx_size")),
+      maxBlockHeaderSize: Number(formData.get("Max_block_header_size")),
+      keyDeposit: Number(formData.get("Key_deposit")),
+      poolDeposit: Number(formData.get("Pool_deposit")),
+      eMax: Number(formData.get("E_max")),
+      nOpt: Number(formData.get("N_opt")),
+      a0: Number(formData.get("A0")),
+      rho: Number(formData.get("Rho")),
+      tau: Number(formData.get("Tau")),
+      decentralisationParam: Number(formData.get("Decentralisation_param")),
+      extraEntropy: Number(formData.get("Extra_entropy")),
+      protocolMajorVer: Number(formData.get("Protocol_major_ver")),
+      protocolMinorVer: Number(formData.get("Protocol_minor_ver")),
+      minUtxo: Number(formData.get("Min_utxo")),
+      minPoolCost: Number(formData.get("Min_pool_cost")),
+      priceMem: Number(formData.get("Price_mem")),
+      priceStep: Number(formData.get("Price_step")),
+      maxTxExMem: Number(formData.get("Max_tx_ex_mem")),
+      maxTxExSteps: Number(formData.get("Max_tx_ex_steps")),
+      maxBlockExMem: Number(formData.get("Max_block_ex_mem")),
+      maxBlockExSteps: Number(formData.get("Max_block_ex_steps")),
+      maxValSize: Number(formData.get("Max_val_size")),
+      collateralPercent: Number(formData.get("Collateral_percent")),
+      maxCollateralInputs: Number(formData.get("Max_collateral_inputs")),
+      coinsPerUtxoSize: Number(formData.get("Coins_per_utxo_size")),
+      coinsPerUtxoWord: Number(formData.get("Coins_per_utxo_word")),
+      blockSlot: Number(formData.get("Block_slot")),
+      era: era?.toString() ?? "Babbage",
+      network: net?.toString() ?? "Mainnet",
+    });
     return json({
       ...section,
       raw,
@@ -61,13 +83,72 @@ function ExampleCard(props: { title: string; address: string }) {
   );
 }
 
+const initialProtPps: ProtocolType[] = [
+  { name: "Epoch", value: 478 },
+  { name: "Min_fee_a", value: 44 },
+  { name: "Min_fee_b", value: 155381 },
+  { name: "Max_block_size", value: 90112 },
+  { name: "Max_tx_size", value: 16384 },
+  { name: "Max_block_header_size", value: 1100 },
+  { name: "Key_deposit", value: 2000000 },
+  { name: "Pool_deposit", value: 500000000 },
+  { name: "E_max", value: 18 },
+  { name: "N_opt", value: 500 },
+  { name: "A0", value: 0.3 },
+  { name: "Rho", value: 0.003 },
+  { name: "Tau", value: 0.2 },
+  { name: "Decentralisation_param", value: 0 },
+  { name: "Extra_entropy", value: null },
+  { name: "Protocol_major_ver", value: 8 },
+  { name: "Protocol_minor_ver", value: 0 },
+  { name: "Min_utxo", value: 4310 },
+  { name: "Min_pool_cost", value: 170000000 },
+  { name: "Price_mem", value: 0.0577 },
+  { name: "Price_step", value: 0.0000721 },
+  { name: "Max_tx_ex_mem", value: 14000000 },
+  { name: "Max_tx_ex_steps", value: 10000000000 },
+  { name: "Max_block_ex_mem", value: 62000000 },
+  { name: "Max_block_ex_steps", value: 20000000000 },
+  { name: "Max_val_size", value: 5000 },
+  { name: "Collateral_percent", value: 150 },
+  { name: "Max_collateral_inputs", value: 3 },
+  { name: "Coins_per_utxo_size", value: 4310 },
+  { name: "Coins_per_utxo_word", value: 4310 },
+];
+
 export default function Index() {
   const data: DataProps | undefined = useActionData();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [protocolParams, setProtocolParams] =
+    useState<ProtocolType[]>(initialProtPps);
+
+  const [otherContext, setOtherContext] = useState<IContext>({
+    blockSlot: 72316896,
+    selectedEra: "Babbage",
+    selectedNetwork: "Mainnet",
+  });
 
   if (data) logCuriosity(data);
 
   const validations: IValidation[] = data?.validations || [];
   const era = data?.era || "";
+
+  const handleModal = () => setModalOpen((prev) => !prev);
+
+  const changeParam =
+    (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setProtocolParams((prev: ProtocolType[]) => {
+        const updatedParams = [...prev];
+        updatedParams[index] = {
+          ...updatedParams[index],
+          value:
+            Number(e.target.value) >= 0
+              ? Number(e.target.value)
+              : updatedParams[index].value,
+        };
+        return updatedParams;
+      });
+    };
 
   return (
     <main className="mt-10 px-4">
@@ -77,7 +158,12 @@ export default function Index() {
         inspect its contents.
       </p>
       <div className="block mt-8">
-        <Form method="POST">
+        <Form
+          method="POST"
+          onSubmit={() => {
+            setModalOpen(false);
+          }}
+        >
           <input
             type="text"
             autoComplete="off"
@@ -86,9 +172,25 @@ export default function Index() {
             className="block w-full px-4 py-2 mt-4 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8  appearance-none text-black placeholder-gray-400 text-2xl outline-none"
             placeholder="Enter the CBOR for any Cardano Tx using HEX-encoding"
           />
-          <div className="flex flex-row justify-end mt-4">
+          <div className="flex flex-row justify-end mt-4 gap-3">
+            <button
+              type="button"
+              onClick={handleModal}
+              className="text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none hover:bg-info-400 hover:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400"
+            >
+              <img alt="" src={SettingsIcon} /> Configs
+            </button>
             <Button type="submit">Dissect</Button>
           </div>
+          {modalOpen && (
+            <ConfigsModal
+              closeModal={handleModal}
+              protocolParams={protocolParams}
+              changeParam={changeParam}
+              otherContext={otherContext}
+              setOtherContext={setOtherContext}
+            />
+          )}
         </Form>
       </div>
 

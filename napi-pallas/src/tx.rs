@@ -1,7 +1,8 @@
-use crate::validations::validate::validate;
 use crate::Validations;
+use crate::{validations::validate::validate, ValidationContext};
 
 use super::Section;
+use pallas::ledger::traverse::Era;
 use pallas::{
   codec::utils::KeepRaw,
   crypto::hash::Hasher,
@@ -235,13 +236,23 @@ pub fn create_cbor_structure(tx: &MultiEraTx<'_>) -> Section {
   out
 }
 
-pub fn parse(raw: String) -> Result<(Section, Validations), Section> {
+pub fn parse(raw: String, context: ValidationContext) -> Result<(Section, Validations), Section> {
   let res_cbor = hex::decode(raw);
+  let mut era_decode = Era::Babbage;
+  match context.era.as_str() {
+    "Alonzo" => era_decode = Era::Alonzo,
+    "Babbage" => era_decode = Era::Babbage,
+    "Byron" => era_decode = Era::Byron,
+    "Conway" => era_decode = Era::Conway,
+    "Shelley MA" => era_decode = Era::Shelley,
+    // This case should never happen
+    _ => {}
+  }
   match res_cbor {
     Ok(cbor) => {
-      let res_mtx = MultiEraTx::decode(&cbor);
+      let res_mtx = MultiEraTx::decode_for_era(era_decode, &cbor);
       match res_mtx {
-        Ok(mtx) => Ok((create_cbor_structure(&mtx), validate(&mtx))),
+        Ok(mtx) => Ok((create_cbor_structure(&mtx), validate(&mtx, context))),
         Err(e) => {
           let mut err = Section::new();
           err.error = Some(e.to_string());

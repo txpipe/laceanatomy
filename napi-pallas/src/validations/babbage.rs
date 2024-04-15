@@ -1,4 +1,4 @@
-use crate::{Validation, Validations};
+use crate::{Validation, ValidationContext, Validations};
 use pallas::{
   applying::{
     babbage::{
@@ -280,34 +280,46 @@ fn validate_babbage_network_id(mtx: &BabbageMintedTx, network_id: u8) -> Validat
     .with_description(description);
 }
 
-pub fn validate_babbage(mtx_b: &BabbageMintedTx) -> Validations {
+pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> Validations {
   let tx_body: &MintedTransactionBody = &mtx_b.transaction_body.clone();
   let size: &Option<u64> = &get_babbage_tx_size(tx_body);
   let prot_params = BabbageProtParams {
     fee_policy: FeePolicy {
-      summand: 155381,
-      multiplier: 44,
+      summand: context.min_fee_b as u64,
+      multiplier: context.min_fee_a as u64,
     },
-    max_tx_size: 16384,
-    max_block_ex_mem: 62000000,
-    max_block_ex_steps: 20000000000,
-    max_tx_ex_mem: 14000000,
-    max_tx_ex_steps: 10000000000,
-    max_val_size: 5000,
-    collateral_percent: 150,
-    max_collateral_inputs: 3,
-    coins_per_utxo_word: 4310,
+    max_tx_size: context.max_tx_size as u64,
+    max_block_ex_mem: context.max_block_ex_mem as u64,
+    max_block_ex_steps: context.max_block_ex_steps as u64,
+    max_tx_ex_mem: context.max_tx_ex_mem,
+    max_tx_ex_steps: context.max_tx_ex_steps as u64,
+    max_val_size: context.max_val_size as u64,
+    collateral_percent: context.collateral_percent as u64,
+    max_collateral_inputs: context.max_collateral_inputs as u64,
+    coins_per_utxo_word: context.coins_per_utxo_word as u64,
   };
+
+  let mut magic = 764824073; // For mainnet
+  if context.network == "Preprod" {
+    magic = 1;
+  } else if context.network == "Preview" {
+    magic = 2;
+  }
+
+  let mut net_id = 1; // For mainnet
+  if context.network == "Preprod" || context.network == "Preview" {
+    net_id = 0;
+  }
 
   let env: Environment = Environment {
     prot_params: MultiEraProtParams::Babbage(prot_params.clone()),
-    prot_magic: 764824073, // Mainnet. For preprod: 1. For preview: 2
-    block_slot: 72316896,  // TODO: Must be an input
-    network_id: 1,         // Mainnet. For preprod: 0. For preview: 0
+    prot_magic: magic,
+    block_slot: context.block_slot as u64,
+    network_id: net_id,
   };
 
   let out = Validations::new()
-    .with_era("Babbage".to_string())
+    .with_era(context.era.to_string())
     .add_new_validation(validate_babbage_ins_not_empty(&mtx_b))
     .add_new_validation(validate_babbage_minting(&mtx_b))
     .add_new_validation(validate_babbage_well_formed(&mtx_b))

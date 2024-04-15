@@ -14,7 +14,7 @@ use pallas::{
   },
 };
 
-use crate::{Validation, Validations};
+use crate::{Validation, ValidationContext, Validations};
 
 use super::validate::set_description;
 
@@ -200,24 +200,40 @@ fn validate_shelley_ma_network_id(mtx_sma: &MintedTx, network_id: &u8) -> Valida
     .with_description(description);
 }
 
-pub fn validate_shelley_ma(mtx_sma: &MintedTx, era: &Era) -> Validations {
+pub fn validate_shelley_ma(
+  mtx_sma: &MintedTx,
+  era: &Era,
+  context: ValidationContext,
+) -> Validations {
   let tx_body: &TransactionBody = &mtx_sma.transaction_body;
   let tx_wits: &MintedWitnessSet = &mtx_sma.transaction_witness_set;
   let size: &Option<u64> = &get_alonzo_comp_tx_size(tx_body);
   let prot_params = ShelleyProtParams {
     fee_policy: FeePolicy {
-      summand: 155381,
-      multiplier: 44,
+      summand: context.min_fee_b as u64,
+      multiplier: context.min_fee_a as u64,
     },
-    max_tx_size: 16384,
+    max_tx_size: context.max_tx_size as u64,
     min_lovelace: 2000000,
   };
 
+  let mut magic = 764824073; // For mainnet
+  if context.network == "Preprod" {
+    magic = 1;
+  } else if context.network == "Preview" {
+    magic = 2;
+  }
+
+  let mut net_id = 1; // For mainnet
+  if context.network == "Preprod" || context.network == "Preview" {
+    net_id = 0;
+  }
+
   let env: Environment = Environment {
     prot_params: MultiEraProtParams::Shelley(prot_params.clone()),
-    prot_magic: 764824073, // Mainnet. For preprod: 1. For preview: 2
-    block_slot: 72316896,  // TODO: Must be an input
-    network_id: 1,         // Mainnet. For preprod: 0. For preview: 0
+    prot_magic: magic,
+    block_slot: context.block_slot as u64,
+    network_id: net_id,
   };
   let out = Validations::new()
     .with_era("Shelley Mary Allegra".to_string())
