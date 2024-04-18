@@ -223,19 +223,19 @@ pub fn validate_shelley_ma(
     desired_number_of_stake_pools: context.n_opt,
     pool_pledge_influence: RationalNumber {
       numerator: context.a0_numerator as u64,
-      denominator: context.a0_denominator as u64, // ?
+      denominator: context.a0_denominator as u64,
     },
     expansion_rate: RationalNumber {
       numerator: context.rho_numerator as u64,
-      denominator: context.rho_denominator as u64, // ?
+      denominator: context.rho_denominator as u64,
     },
     treasury_growth_rate: RationalNumber {
       numerator: context.tau_numerator as u64,
-      denominator: context.tau_denominator as u64, // ?
+      denominator: context.tau_denominator as u64,
     },
     decentralization_constant: RationalNumber {
       numerator: context.decentralisation_param_numerator as u64,
-      denominator: context.decentralisation_param_denominator as u64, // ?
+      denominator: context.decentralisation_param_denominator as u64,
     },
     extra_entropy: Nonce {
       variant: NonceVariant::NeutralNonce,

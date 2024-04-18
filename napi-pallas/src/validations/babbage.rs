@@ -302,19 +302,19 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
     desired_number_of_stake_pools: context.n_opt,
     pool_pledge_influence: RationalNumber {
       numerator: context.a0_numerator as u64,
-      denominator: context.a0_denominator as u64, // ?
+      denominator: context.a0_denominator as u64,
     },
     expansion_rate: RationalNumber {
       numerator: context.rho_numerator as u64,
-      denominator: context.rho_denominator as u64, // ?
+      denominator: context.rho_denominator as u64,
     },
     treasury_growth_rate: RationalNumber {
       numerator: context.tau_numerator as u64,
-      denominator: context.tau_denominator as u64, // ?
+      denominator: context.tau_denominator as u64,
     },
     decentralization_constant: RationalNumber {
       numerator: context.decentralisation_param_numerator as u64,
-      denominator: context.decentralisation_param_denominator as u64, // ?
+      denominator: context.decentralisation_param_denominator as u64,
     },
     extra_entropy: Nonce {
       variant: NonceVariant::NeutralNonce,
@@ -333,11 +333,11 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
     execution_costs: ExUnitPrices {
       mem_price: RationalNumber {
         numerator: context.price_mem_numerator as u64,
-        denominator: context.price_mem_denominator as u64, // ?
+        denominator: context.price_mem_denominator as u64,
       },
       step_price: RationalNumber {
         numerator: context.price_step_numerator as u64,
-        denominator: context.price_step_denominator as u64, // ?
+        denominator: context.price_step_denominator as u64,
       },
     },
     max_tx_ex_units: ExUnits {

@@ -2,9 +2,16 @@ import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
 import { useState } from "react";
 import SettingsIcon from "../../public/settings.svg";
-import { Button, ConfigsModal, RootSection, logCuriosity } from "../components";
-import { DataProps, IContext, IValidation, ProtocolType } from "../interfaces";
-import { decimalToFraction, initialProtPps } from "../utils";
+import { Button, ConfigsModal, Input, RootSection } from "../components";
+import {
+  DataProps,
+  Eras,
+  IContext,
+  IValidation,
+  Networks,
+  ProtocolType,
+} from "../interfaces";
+import { decimalToFraction, initialProtPps, logCuriosity } from "../utils";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
 
@@ -131,8 +138,8 @@ export default function Index() {
 
   const [otherContext, setOtherContext] = useState<IContext>({
     blockSlot: 72316896,
-    selectedEra: "Babbage",
-    selectedNetwork: "Mainnet",
+    selectedEra: Eras.Babbage,
+    selectedNetwork: Networks.Mainnet,
   });
 
   if (data) logCuriosity(data);
@@ -171,22 +178,22 @@ export default function Index() {
             setModalOpen(false);
           }}
         >
-          <input
+          <Input
             type="text"
             autoComplete="off"
             defaultValue={data?.raw}
             name="raw"
-            className="block w-full px-4 py-2 mt-4 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8  appearance-none text-black placeholder-gray-400 text-2xl outline-none"
             placeholder="Enter the CBOR for any Cardano Tx using HEX-encoding"
           />
           <div className="flex flex-row justify-end mt-4 gap-3">
-            <button
+            <Button
               type="button"
               onClick={handleModal}
-              className="text-info-950 items-center shadow shadow-info-500 text-lg font-semibold inline-flex px-6 focus:outline-none justify-center text-center bg-info-300 focus:bg-info-500 border-info-500 ease-in-out duration-300 outline-none hover:bg-info-400 hover:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400"
+              color="pink"
+              className="hover:bg-pink-400"
             >
               <img alt="" src={SettingsIcon} /> Configs
-            </button>
+            </Button>
             <Button type="submit">Dissect</Button>
           </div>
           {modalOpen && (
