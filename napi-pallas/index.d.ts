@@ -31,17 +31,24 @@ export interface ValidationContext {
   poolDeposit: number
   eMax: number
   nOpt: number
-  a0: number
-  rho: number
-  tau: number
-  decentralisationParam: number
-  extraEntropy: number
+  a0Numerator: number
+  a0Denominator: number
+  rhoNumerator: number
+  rhoDenominator: number
+  tauNumerator: number
+  tauDenominator: number
+  decentralisationParamNumerator: number
+  decentralisationParamDenominator: number
+  extraEntropyNumerator: number
+  extraEntropyDenominator: number
   protocolMajorVer: number
   protocolMinorVer: number
   minUtxo: number
   minPoolCost: number
-  priceMem: number
-  priceStep: number
+  priceMemNumerator: number
+  priceMemDenominator: number
+  priceStepNumerator: number
+  priceStepDenominator: number
   maxTxExMem: number
   maxTxExSteps: number
   maxBlockExMem: number

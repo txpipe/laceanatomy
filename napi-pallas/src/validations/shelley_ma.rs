@@ -5,12 +5,15 @@ use pallas::{
       check_minting, check_network_id, check_preservation_of_value, check_ttl, check_tx_size,
       check_witnesses,
     },
-    utils::{get_alonzo_comp_tx_size, FeePolicy, ShelleyProtParams},
-    Environment, MultiEraProtParams, UTxOs,
+    utils::{get_alonzo_comp_tx_size, ShelleyProtParams},
+    Environment, MultiEraProtocolParameters, UTxOs,
   },
   ledger::{
-    primitives::alonzo::{MintedTx, MintedWitnessSet, TransactionBody},
-    traverse::Era,
+    primitives::{
+      alonzo::{MintedTx, MintedWitnessSet, TransactionBody},
+      conway::{NonceVariant, RationalNumber},
+    },
+    traverse::{update::Nonce, Era},
   },
 };
 
@@ -19,7 +22,7 @@ use crate::{Validation, ValidationContext, Validations};
 use super::validate::set_description;
 
 // & The following validation requires the size and the protocol parameters
-fn validate_byron_ma_size(size: &Option<u64>, prot_pps: &ShelleyProtParams) -> Validation {
+fn validate_shelley_ma_tx_size(size: &Option<u32>, prot_pps: &ShelleyProtParams) -> Validation {
   match size {
     Some(size_value) => {
       let res = check_tx_size(&size_value, &prot_pps);
@@ -83,7 +86,7 @@ fn validate_shelley_ma_min_lovelace(
   prot_pps: &ShelleyProtParams,
 ) -> Validation {
   let tx_body = &mtx_sma.transaction_body;
-  let res = check_min_lovelace(&tx_body, &prot_pps, &Era::Shelley);
+  let res = check_min_lovelace(&tx_body, &prot_pps);
   let description = set_description(
     &res,
     "All transaction outputs contain Lovelace values not under the minimum.".to_string(),
@@ -97,7 +100,7 @@ fn validate_shelley_ma_min_lovelace(
 // & The following validations require the transaction the size and the protocol parameters
 fn validate_shelley_ma_fees(
   mtx_sma: &MintedTx,
-  size: &Option<u64>,
+  size: &Option<u32>,
   prot_pps: &ShelleyProtParams,
 ) -> Validation {
   match size {
@@ -207,14 +210,42 @@ pub fn validate_shelley_ma(
 ) -> Validations {
   let tx_body: &TransactionBody = &mtx_sma.transaction_body;
   let tx_wits: &MintedWitnessSet = &mtx_sma.transaction_witness_set;
-  let size: &Option<u64> = &get_alonzo_comp_tx_size(tx_body);
+  let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
   let prot_params = ShelleyProtParams {
-    fee_policy: FeePolicy {
-      summand: context.min_fee_b as u64,
-      multiplier: context.min_fee_a as u64,
+    minfee_a: context.min_fee_a,
+    minfee_b: context.min_fee_b,
+    max_block_body_size: context.max_block_size,
+    max_transaction_size: context.max_tx_size,
+    max_block_header_size: context.max_block_header_size,
+    key_deposit: context.key_deposit as u64,
+    pool_deposit: context.pool_deposit as u64,
+    maximum_epoch: context.e_max as u64,
+    desired_number_of_stake_pools: context.n_opt,
+    pool_pledge_influence: RationalNumber {
+      numerator: context.a0_numerator as u64,
+      denominator: context.a0_denominator as u64, // ?
     },
-    max_tx_size: context.max_tx_size as u64,
-    min_lovelace: 2000000,
+    expansion_rate: RationalNumber {
+      numerator: context.rho_numerator as u64,
+      denominator: context.rho_denominator as u64, // ?
+    },
+    treasury_growth_rate: RationalNumber {
+      numerator: context.tau_numerator as u64,
+      denominator: context.tau_denominator as u64, // ?
+    },
+    decentralization_constant: RationalNumber {
+      numerator: context.decentralisation_param_numerator as u64,
+      denominator: context.decentralisation_param_denominator as u64, // ?
+    },
+    extra_entropy: Nonce {
+      variant: NonceVariant::NeutralNonce,
+      hash: None,
+    },
+    protocol_version: (
+      context.protocol_minor_ver as u64,
+      context.protocol_major_ver as u64,
+    ),
+    min_utxo_value: context.min_utxo as u64,
   };
 
   let mut magic = 764824073; // For mainnet
@@ -230,14 +261,14 @@ pub fn validate_shelley_ma(
   }
 
   let env: Environment = Environment {
-    prot_params: MultiEraProtParams::Shelley(prot_params.clone()),
+    prot_params: MultiEraProtocolParameters::Shelley(prot_params.clone()),
     prot_magic: magic,
     block_slot: context.block_slot as u64,
     network_id: net_id,
   };
   let out = Validations::new()
     .with_era("Shelley Mary Allegra".to_string())
-    .add_new_validation(validate_byron_ma_size(&size, &prot_params))
+    .add_new_validation(validate_shelley_ma_tx_size(size, &prot_params))
     .add_new_validation(validate_shelley_ma_ins_not_empty(&mtx_sma))
     .add_new_validation(validate_shelley_ma_metadata(&mtx_sma))
     .add_new_validation(validate_shelley_ma_minting(&mtx_sma))

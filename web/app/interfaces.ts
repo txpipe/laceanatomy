@@ -19,7 +19,7 @@ export interface DataProps extends server.Section {
 
 export interface ProtocolType {
   name: string;
-  value: number | null;
+  value: number;
 }
 
 export const TabType = {

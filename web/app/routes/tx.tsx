@@ -4,6 +4,7 @@ import { useState } from "react";
 import SettingsIcon from "../../public/settings.svg";
 import { Button, ConfigsModal, RootSection, logCuriosity } from "../components";
 import { DataProps, IContext, IValidation, ProtocolType } from "../interfaces";
+import { decimalToFraction, initialProtPps } from "../utils";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
 
@@ -19,6 +20,26 @@ export async function action({ request }: ActionFunctionArgs) {
   const raw = formData.get("raw");
   const era = formData.get("Era");
   const net = formData.get("Network");
+  const [a0Numerator, a0Denominator] = decimalToFraction(
+    Number(formData.get("A0"))
+  );
+  const [rhoNumerator, rhoDenominator] = decimalToFraction(
+    Number(formData.get("Rho"))
+  );
+  const [tauNumerator, tauDenominator] = decimalToFraction(
+    Number(formData.get("Tau"))
+  );
+  const [decentralisationParamNumerator, decentralisationParamDenominator] =
+    decimalToFraction(Number(formData.get("Decentralisation_param")));
+  const [extraEntropyNumerator, extraEntropyDenominator] = decimalToFraction(
+    Number(formData.get("Extra_entropy"))
+  );
+  const [priceMemNumerator, priceMemDenominator] = decimalToFraction(
+    Number(formData.get("Price_mem"))
+  );
+  const [priceStepNumerator, priceStepDenominator] = decimalToFraction(
+    Number(formData.get("Price_step"))
+  );
 
   if (raw) {
     const { section, validations } = server.safeParseTx(raw.toString(), {
@@ -32,17 +53,24 @@ export async function action({ request }: ActionFunctionArgs) {
       poolDeposit: Number(formData.get("Pool_deposit")),
       eMax: Number(formData.get("E_max")),
       nOpt: Number(formData.get("N_opt")),
-      a0: Number(formData.get("A0")),
-      rho: Number(formData.get("Rho")),
-      tau: Number(formData.get("Tau")),
-      decentralisationParam: Number(formData.get("Decentralisation_param")),
-      extraEntropy: Number(formData.get("Extra_entropy")),
+      a0Numerator: a0Numerator,
+      a0Denominator: a0Denominator,
+      rhoNumerator: rhoNumerator,
+      rhoDenominator: rhoDenominator,
+      tauNumerator: tauNumerator,
+      tauDenominator: tauDenominator,
+      decentralisationParamNumerator: decentralisationParamNumerator,
+      decentralisationParamDenominator: decentralisationParamDenominator,
+      extraEntropyNumerator: extraEntropyNumerator,
+      extraEntropyDenominator: extraEntropyDenominator,
       protocolMajorVer: Number(formData.get("Protocol_major_ver")),
       protocolMinorVer: Number(formData.get("Protocol_minor_ver")),
       minUtxo: Number(formData.get("Min_utxo")),
       minPoolCost: Number(formData.get("Min_pool_cost")),
-      priceMem: Number(formData.get("Price_mem")),
-      priceStep: Number(formData.get("Price_step")),
+      priceMemNumerator: priceMemNumerator,
+      priceMemDenominator: priceMemDenominator,
+      priceStepNumerator: priceStepNumerator,
+      priceStepDenominator: priceStepDenominator,
       maxTxExMem: Number(formData.get("Max_tx_ex_mem")),
       maxTxExSteps: Number(formData.get("Max_tx_ex_steps")),
       maxBlockExMem: Number(formData.get("Max_block_ex_mem")),
@@ -74,7 +102,19 @@ function ExampleCard(props: { title: string; address: string }) {
         className="border-2 rounded-lg p-4 shadow bg-gray-100 cursor-pointer flex flex-col w-full h-full text-left"
       >
         <h3 className="text-xl">{props.title}</h3>
-        <input type="hidden" value={props.address} name="raw" />
+        <input type="hidden" readOnly value={props.address} name="raw" />
+        <input readOnly value="Mainnet" name="Network" className="hidden" />
+        <input readOnly value="Babbage" name="Era" className="hidden" />
+        <input name="Block_slot" readOnly value={72316896} className="hidden" />
+        {initialProtPps.map((param) => (
+          <input
+            key={param.name}
+            readOnly
+            value={param.value}
+            name={param.name}
+            className="hidden"
+          />
+        ))}
         <code className="w-full break-words block mt-4 text-gray-400">
           {props.address.substring(0, 30)}...
         </code>
@@ -82,39 +122,6 @@ function ExampleCard(props: { title: string; address: string }) {
     </Form>
   );
 }
-
-const initialProtPps: ProtocolType[] = [
-  { name: "Epoch", value: 478 },
-  { name: "Min_fee_a", value: 44 },
-  { name: "Min_fee_b", value: 155381 },
-  { name: "Max_block_size", value: 90112 },
-  { name: "Max_tx_size", value: 16384 },
-  { name: "Max_block_header_size", value: 1100 },
-  { name: "Key_deposit", value: 2000000 },
-  { name: "Pool_deposit", value: 500000000 },
-  { name: "E_max", value: 18 },
-  { name: "N_opt", value: 500 },
-  { name: "A0", value: 0.3 },
-  { name: "Rho", value: 0.003 },
-  { name: "Tau", value: 0.2 },
-  { name: "Decentralisation_param", value: 0 },
-  { name: "Extra_entropy", value: null },
-  { name: "Protocol_major_ver", value: 8 },
-  { name: "Protocol_minor_ver", value: 0 },
-  { name: "Min_utxo", value: 4310 },
-  { name: "Min_pool_cost", value: 170000000 },
-  { name: "Price_mem", value: 0.0577 },
-  { name: "Price_step", value: 0.0000721 },
-  { name: "Max_tx_ex_mem", value: 14000000 },
-  { name: "Max_tx_ex_steps", value: 10000000000 },
-  { name: "Max_block_ex_mem", value: 62000000 },
-  { name: "Max_block_ex_steps", value: 20000000000 },
-  { name: "Max_val_size", value: 5000 },
-  { name: "Collateral_percent", value: 150 },
-  { name: "Max_collateral_inputs", value: 3 },
-  { name: "Coins_per_utxo_size", value: 4310 },
-  { name: "Coins_per_utxo_word", value: 4310 },
-];
 
 export default function Index() {
   const data: DataProps | undefined = useActionData();

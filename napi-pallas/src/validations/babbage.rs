@@ -7,10 +7,17 @@ use pallas::{
       check_preservation_of_value, check_script_data_hash, check_tx_ex_units, check_tx_size,
       check_tx_validity_interval, check_well_formedness, check_witness_set,
     },
-    utils::{get_babbage_tx_size, BabbageProtParams, FeePolicy},
-    Environment, MultiEraProtParams, UTxOs,
+    utils::{get_babbage_tx_size, BabbageProtParams},
+    Environment, MultiEraProtocolParameters, UTxOs,
   },
-  ledger::primitives::babbage::{MintedTransactionBody, MintedTx as BabbageMintedTx},
+  ledger::{
+    primitives::{
+      alonzo::ExUnitPrices,
+      babbage::{CostMdls, MintedTransactionBody, MintedTx as BabbageMintedTx},
+      conway::{Nonce, NonceVariant, RationalNumber},
+    },
+    traverse::update::ExUnits,
+  },
 };
 
 use super::validate::set_description;
@@ -115,7 +122,7 @@ fn validate_babbage_tx_ex_units(mtx: &BabbageMintedTx, prot_pps: &BabbageProtPar
 }
 
 // &The following validation also requires the tx size
-fn validate_babbage_tx_size(size: &Option<u64>, prot_pps: &BabbageProtParams) -> Validation {
+fn validate_babbage_tx_size(size: &Option<u32>, prot_pps: &BabbageProtParams) -> Validation {
   match size {
     Some(size_value) => {
       let res = check_tx_size(size_value, prot_pps);
@@ -142,7 +149,7 @@ fn validate_babbage_tx_size(size: &Option<u64>, prot_pps: &BabbageProtParams) ->
 // &The following validation also requires the tx utxos
 fn validate_babbage_fee(
   mtx: &BabbageMintedTx,
-  size: &Option<u64>,
+  size: &Option<u32>,
   utxos: &UTxOs,
   prot_pps: &BabbageProtParams,
 ) -> Validation {
@@ -282,21 +289,68 @@ fn validate_babbage_network_id(mtx: &BabbageMintedTx, network_id: u8) -> Validat
 
 pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> Validations {
   let tx_body: &MintedTransactionBody = &mtx_b.transaction_body.clone();
-  let size: &Option<u64> = &get_babbage_tx_size(tx_body);
+  let size: &Option<u32> = &get_babbage_tx_size(tx_body);
   let prot_params = BabbageProtParams {
-    fee_policy: FeePolicy {
-      summand: context.min_fee_b as u64,
-      multiplier: context.min_fee_a as u64,
+    minfee_a: context.min_fee_a,
+    minfee_b: context.min_fee_b,
+    max_block_body_size: context.max_block_size,
+    max_transaction_size: context.max_tx_size,
+    max_block_header_size: context.max_block_header_size,
+    key_deposit: context.key_deposit as u64,
+    pool_deposit: context.pool_deposit as u64,
+    maximum_epoch: context.e_max as u64,
+    desired_number_of_stake_pools: context.n_opt,
+    pool_pledge_influence: RationalNumber {
+      numerator: context.a0_numerator as u64,
+      denominator: context.a0_denominator as u64, // ?
     },
-    max_tx_size: context.max_tx_size as u64,
-    max_block_ex_mem: context.max_block_ex_mem as u64,
-    max_block_ex_steps: context.max_block_ex_steps as u64,
-    max_tx_ex_mem: context.max_tx_ex_mem,
-    max_tx_ex_steps: context.max_tx_ex_steps as u64,
-    max_val_size: context.max_val_size as u64,
-    collateral_percent: context.collateral_percent as u64,
-    max_collateral_inputs: context.max_collateral_inputs as u64,
-    coins_per_utxo_word: context.coins_per_utxo_word as u64,
+    expansion_rate: RationalNumber {
+      numerator: context.rho_numerator as u64,
+      denominator: context.rho_denominator as u64, // ?
+    },
+    treasury_growth_rate: RationalNumber {
+      numerator: context.tau_numerator as u64,
+      denominator: context.tau_denominator as u64, // ?
+    },
+    decentralization_constant: RationalNumber {
+      numerator: context.decentralisation_param_numerator as u64,
+      denominator: context.decentralisation_param_denominator as u64, // ?
+    },
+    extra_entropy: Nonce {
+      variant: NonceVariant::NeutralNonce,
+      hash: None,
+    },
+    protocol_version: (
+      context.protocol_minor_ver as u64,
+      context.protocol_major_ver as u64,
+    ),
+    min_pool_cost: context.min_pool_cost as u64,
+    cost_models_for_script_languages: CostMdls {
+      plutus_v1: None,
+      plutus_v2: None,
+    },
+    ada_per_utxo_byte: context.coins_per_utxo_size as u64,
+    execution_costs: ExUnitPrices {
+      mem_price: RationalNumber {
+        numerator: context.price_mem_numerator as u64,
+        denominator: context.price_mem_denominator as u64, // ?
+      },
+      step_price: RationalNumber {
+        numerator: context.price_step_numerator as u64,
+        denominator: context.price_step_denominator as u64, // ?
+      },
+    },
+    max_tx_ex_units: ExUnits {
+      mem: context.max_tx_ex_mem,
+      steps: context.max_tx_ex_steps as u64,
+    },
+    max_block_ex_units: ExUnits {
+      mem: context.max_block_ex_mem,
+      steps: context.max_block_ex_steps as u64,
+    },
+    max_value_size: context.max_val_size,
+    collateral_percentage: context.collateral_percent,
+    max_collateral_inputs: context.max_collateral_inputs,
   };
 
   let mut magic = 764824073; // For mainnet
@@ -312,7 +366,7 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
   }
 
   let env: Environment = Environment {
-    prot_params: MultiEraProtParams::Babbage(prot_params.clone()),
+    prot_params: MultiEraProtocolParameters::Babbage(prot_params.clone()),
     prot_magic: magic,
     block_slot: context.block_slot as u64,
     network_id: net_id,

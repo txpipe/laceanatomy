@@ -18,7 +18,7 @@ pub fn set_description(res: &Result<(), ValidationError>, success: String) -> St
 
 pub fn validate(mtx: &MultiEraTx<'_>, context: ValidationContext) -> Validations {
   match &mtx {
-    MultiEraTx::Byron(mtxp) => validate_byron(&mtxp, context),
+    MultiEraTx::Byron(mtxp) => validate_byron(&mtxp),
     MultiEraTx::AlonzoCompatible(mtx_sma, Era::Shelley) => {
       validate_shelley_ma(&mtx_sma, &Era::Shelley, context)
     }

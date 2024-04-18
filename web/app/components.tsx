@@ -3,12 +3,14 @@ import { PropsWithChildren, useEffect, useState } from "react";
 import {
   DataProps,
   EraType,
+  Eras,
   IContext,
   IValidation,
   NetworkType,
   ProtocolType,
   TabType,
 } from "./interfaces";
+import { ByronPptParams } from "./utils";
 
 export type TopicMeta = {
   title: string;
@@ -329,7 +331,7 @@ export function ConfigsModal({
                   hover:bg-info-400 hover:bg-pink-400 border-2 sm:w-auto rounded-lg py-2 tracking-wide w-full border-blue-950 shadow-black rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400
                   mt-3`}
           >
-            Submit
+            Submit & Dissect
           </button>
         </div>
       </div>
@@ -364,6 +366,9 @@ function Tabs({
     setOtherContext({ ...otherContext, blockSlot: Number(value) });
   };
 
+  const isByron = otherContext.selectedEra === Eras.Byron;
+  const paramsList = isByron ? ByronPptParams : protocolParams;
+
   return (
     <div className="flex flex-col mt-5 justify-center">
       <div className="flex gap-3 justify-center">
@@ -386,7 +391,7 @@ function Tabs({
             selected === TabType.ProtocolParameters ? "block" : "hidden"
           }`}
         >
-          {protocolParams.map((param, index) => (
+          {paramsList.map((param, index) => (
             <div key={param.name}>
               <label htmlFor={param.name} className="text-lg">
                 {param.name.replace(/_/g, " ")}
@@ -395,10 +400,15 @@ function Tabs({
                 id={param.name}
                 name={param.name}
                 type="number"
+                disabled={isByron}
                 value={Number(param.value).toString() ?? 0}
                 onChange={changeParam(index)}
-                className="block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
-                  focus:bg-pink-200 hover:bg-pink-200"
+                className={`block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
+                  ${
+                    isByron
+                      ? "bg-slate-300 cursor-not-allowed"
+                      : "focus:bg-pink-200 hover:bg-pink-200"
+                  }`}
               />
             </div>
           ))}

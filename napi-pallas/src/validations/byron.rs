@@ -1,11 +1,11 @@
-use crate::{Validation, ValidationContext, Validations};
+use crate::{Validation, Validations};
 use pallas::{
   applying::{
     byron::{
       check_fees, check_ins_in_utxos, check_ins_not_empty, check_outs_have_lovelace,
       check_outs_not_empty, check_size, check_witnesses,
     },
-    utils::{ByronProtParams, FeePolicy},
+    utils::ByronProtParams,
     UTxOs,
   },
   codec::minicbor::encode,
@@ -120,15 +120,25 @@ fn validate_byron_fees(
     .with_description(description);
 }
 
-pub fn validate_byron(mtxp: &MintedTxPayload, context: ValidationContext) -> Validations {
+pub fn validate_byron(mtxp: &MintedTxPayload) -> Validations {
   let tx: &Tx = &mtxp.transaction;
   let size: &u64 = &get_tx_size(&tx);
   let prot_pps: ByronProtParams = ByronProtParams {
-    fee_policy: FeePolicy {
-      summand: context.min_fee_b as u64,
-      multiplier: context.min_fee_a as u64,
-    },
-    max_tx_size: context.max_tx_size as u64,
+    script_version: 0,
+    slot_duration: 20000,
+    max_block_size: 2000000,
+    max_header_size: 2000000,
+    max_tx_size: 4096,
+    max_proposal_size: 700,
+    mpc_thd: 20000000000000,
+    heavy_del_thd: 300000000000,
+    update_vote_thd: 1000000000000,
+    update_proposal_thd: 100000000000000,
+    update_implicit: 10000,
+    soft_fork_rule: (900000000000000, 600000000000000, 50000000000000),
+    summand: 155381,
+    multiplier: 44,
+    unlock_stake_epoch: 18446744073709551615,
   };
 
   let out = Validations::new()
