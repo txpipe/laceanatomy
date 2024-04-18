@@ -22,20 +22,20 @@ export interface ProtocolType {
   value: number;
 }
 
-export const TabType = {
+export const TabNames = {
   ProtocolParameters: "Protocol Parameters",
   Others: "Other Context",
 } as const;
 
-export type TabType = (typeof TabType)[keyof typeof TabType];
+export type TabType = (typeof TabNames)[keyof typeof TabNames];
 
-export const NetworkType = {
+export const Networks = {
   Mainnet: "Mainnet",
   Preprod: "Preprod",
   Preview: "Preview",
 } as const;
 
-export type NetworkType = (typeof NetworkType)[keyof typeof NetworkType];
+export type NetworkType = (typeof Networks)[keyof typeof Networks];
 
 export const Eras = {
   Byron: "Byron",

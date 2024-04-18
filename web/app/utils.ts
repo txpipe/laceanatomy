@@ -1,4 +1,5 @@
-import { ProtocolType } from "./interfaces";
+import { TopicMeta } from "./components/constructors";
+import { DataProps, ProtocolType } from "./interfaces";
 
 export const initialProtPps: ProtocolType[] = [
   { name: "Epoch", value: 478 },
@@ -68,4 +69,31 @@ export function decimalToFraction(decimal: number): [number, number] {
   }
 
   return [prevNumerator, prevDenominator];
+}
+
+export function getTopicMeta(
+  key: string | undefined,
+  all: Record<string, TopicMeta>
+): TopicMeta {
+  return (
+    all[key!] || {
+      title: key,
+    }
+  );
+}
+
+export function logCuriosity(data: DataProps) {
+  if (data) {
+    console.group("CURIOUS FELLOW, EH?");
+    console.log("hello there! want to learn how we parse the data?");
+    console.log(
+      "we use the Pallas library on the backend. Pallas is a Rust library for Cardano. We compile it to native code and use FFI to trigger the logic from a NodeJS process."
+    );
+    console.log("https://github.com/txpipe/pallas");
+    console.log(
+      "here's the json payload for the data you see rendered on-screen:"
+    );
+    console.log(data);
+    console.groupEnd();
+  }
 }
