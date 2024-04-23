@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useLocation } from "@remix-run/react";
+import { useContext, useState } from "react";
+import { ValidationsContext } from "../../contexts/validations.context";
 import { IValidation } from "../../interfaces";
+import { SearchParams } from "../../utils";
 
 function AccordionItem({ validation }: { validation: IValidation }) {
   const [open, setOpen] = useState(false);
   const handleClick = () => setOpen(!open);
+
   return (
     <div
       key={validation.name}
@@ -59,15 +63,23 @@ function AccordionItem({ validation }: { validation: IValidation }) {
   );
 }
 
-export function ValidationAccordion(props: { validations: IValidation[] }) {
+export function ValidationInformation() {
+  const { validations } = useContext(ValidationsContext);
+  const location = useLocation();
+  const shownValidations =
+    new URLSearchParams(location.search).get(SearchParams.LIST)?.split(",") ??
+    [];
+
   return (
     <div
       className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
         accordion text-xl font-medium mt-10 overflow-hidden pb-1"
     >
-      {props.validations.map((v) => (
-        <AccordionItem key={v.name} validation={v} />
-      ))}
+      {validations
+        .filter((v) => shownValidations.includes(v.name))
+        .map((v) => (
+          <AccordionItem key={v.name} validation={v} />
+        ))}
     </div>
   );
 }

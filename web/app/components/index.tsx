@@ -3,7 +3,7 @@ export { DataSection } from "./DataSection";
 export { Input } from "./Input";
 export { RootSection } from "./RootSection";
 export { ConfigsModal } from "./Validations/Configurations/Configurations";
-export { ValidationAccordion } from "./Validations/Information";
+export { ValidationInformation } from "./Validations/Information";
 export {
   EmptyBlock,
   HexBlock,

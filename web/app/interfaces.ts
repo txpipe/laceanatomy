@@ -17,14 +17,14 @@ export interface DataProps extends server.Section {
   raw?: string;
 }
 
-export interface ProtocolType {
+export interface IProtocolParam {
   name: string;
   value: number;
 }
 
 export const TabNames = {
-  ProtocolParameters: "Protocol Parameters",
-  Others: "Other Context",
+  Context: "Context",
+  UI_Options: "UI Options",
 } as const;
 
 export type TabType = (typeof TabNames)[keyof typeof TabNames];

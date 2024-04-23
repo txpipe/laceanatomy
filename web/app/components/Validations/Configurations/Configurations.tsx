@@ -1,23 +1,12 @@
 import { useEffect } from "react";
 import { Button } from "../../../components";
-import { IContext, ProtocolType } from "../../../interfaces";
 import { Tabs } from "./Tabs";
 
-export function ConfigsModal({
-  closeModal,
-  protocolParams,
-  changeParam,
-  otherContext,
-  setOtherContext,
-}: {
+interface ConfigsModalProps {
   closeModal: () => void;
-  protocolParams: ProtocolType[];
-  changeParam: (
-    index: number
-  ) => (e: React.ChangeEvent<HTMLInputElement>) => void;
-  otherContext: IContext;
-  setOtherContext: (c: IContext) => void;
-}) {
+}
+
+export function ConfigsModal({ closeModal }: ConfigsModalProps) {
   // To close config modal on esc press
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -44,14 +33,9 @@ export function ConfigsModal({
           >
             +
           </button>
-          <Tabs
-            otherContext={otherContext}
-            protocolParams={protocolParams}
-            changeParam={changeParam}
-            setOtherContext={setOtherContext}
-          />
+          <Tabs />
           <Button type="submit" color="pink" className="hover:bg-pink-400 mt-3">
-            Submit & Dissect
+            Submit
           </Button>
         </div>
       </div>
