@@ -12,6 +12,52 @@ mod validations;
 
 #[derive(Default)]
 #[napi(object)]
+pub struct ValidationContext {
+  pub epoch: u32,
+  pub min_fee_a: u32,
+  pub min_fee_b: u32,
+  pub max_block_size: u32,
+  pub max_tx_size: u32,
+  pub max_block_header_size: u32,
+  pub key_deposit: i64,
+  pub pool_deposit: i64,
+  pub e_max: i64,
+  pub n_opt: u32,
+  pub a0_numerator: i64,
+  pub a0_denominator: i64,
+  pub rho_numerator: i64,
+  pub rho_denominator: i64,
+  pub tau_numerator: i64,
+  pub tau_denominator: i64,
+  pub decentralisation_param_numerator: i64,
+  pub decentralisation_param_denominator: i64,
+  pub extra_entropy_numerator: u32,
+  pub extra_entropy_denominator: u32,
+  pub protocol_major_ver: i64,
+  pub protocol_minor_ver: i64,
+  pub min_utxo: i64,
+  pub min_pool_cost: i64,
+  pub price_mem_numerator: i64,
+  pub price_mem_denominator: i64,
+  pub price_step_numerator: i64,
+  pub price_step_denominator: i64,
+  pub max_tx_ex_mem: u32,
+  pub max_tx_ex_steps: i64,
+  pub max_block_ex_mem: u32,
+  pub max_block_ex_steps: i64,
+  pub max_val_size: u32,
+  pub collateral_percent: u32,
+  pub max_collateral_inputs: u32,
+  pub coins_per_utxo_size: i64,
+  pub coins_per_utxo_word: i64,
+
+  pub network: String,
+  pub era: String,
+  pub block_slot: u32,
+}
+
+#[derive(Default)]
+#[napi(object)]
 pub struct Attribute {
   pub topic: Option<String>,
   pub value: Option<String>,
@@ -152,8 +198,8 @@ pub struct SectionValidation {
 }
 
 #[napi]
-pub fn safe_parse_tx(raw: String) -> SectionValidation {
-  match tx::parse(raw) {
+pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidation {
+  match tx::parse(raw, context) {
     Ok(x) => {
       let (section, validations) = x;
       SectionValidation {
@@ -212,6 +258,7 @@ impl Validation {
 #[napi(object)]
 pub struct Validations {
   pub validations: Vec<Validation>,
+  pub era: String,
 }
 
 impl Validations {
@@ -223,5 +270,12 @@ impl Validations {
     self.validations.push(validation);
 
     self
+  }
+
+  pub fn with_era(self, era: impl ToString) -> Self {
+    Self {
+      era: era.to_string(),
+      ..self
+    }
   }
 }

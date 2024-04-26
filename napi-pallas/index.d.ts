@@ -20,6 +20,48 @@ export interface Output {
   bytes?: string
   address?: AddressDiagnostic
 }
+export interface ValidationContext {
+  epoch: number
+  minFeeA: number
+  minFeeB: number
+  maxBlockSize: number
+  maxTxSize: number
+  maxBlockHeaderSize: number
+  keyDeposit: number
+  poolDeposit: number
+  eMax: number
+  nOpt: number
+  a0Numerator: number
+  a0Denominator: number
+  rhoNumerator: number
+  rhoDenominator: number
+  tauNumerator: number
+  tauDenominator: number
+  decentralisationParamNumerator: number
+  decentralisationParamDenominator: number
+  extraEntropyNumerator: number
+  extraEntropyDenominator: number
+  protocolMajorVer: number
+  protocolMinorVer: number
+  minUtxo: number
+  minPoolCost: number
+  priceMemNumerator: number
+  priceMemDenominator: number
+  priceStepNumerator: number
+  priceStepDenominator: number
+  maxTxExMem: number
+  maxTxExSteps: number
+  maxBlockExMem: number
+  maxBlockExSteps: number
+  maxValSize: number
+  collateralPercent: number
+  maxCollateralInputs: number
+  coinsPerUtxoSize: number
+  coinsPerUtxoWord: number
+  network: string
+  era: string
+  blockSlot: number
+}
 export interface Attribute {
   topic?: string
   value?: string
@@ -37,7 +79,7 @@ export interface SectionValidation {
   section: Section
   validations: Validations
 }
-export function safeParseTx(raw: string): SectionValidation
+export function safeParseTx(raw: string, context: ValidationContext): SectionValidation
 export function safeParseBlock(raw: string): Section
 export interface Validation {
   name: string
@@ -46,4 +88,5 @@ export interface Validation {
 }
 export interface Validations {
   validations: Array<Validation>
+  era: string
 }
