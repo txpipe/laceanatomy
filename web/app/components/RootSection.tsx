@@ -43,7 +43,7 @@ export function RootSection(props: {
               <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
             </div>
           </button>
-          {open ?? (initialOpen && <ValidationInformation />)}
+          {open && <ValidationInformation />}
         </div>
       )}
       <h4 className="text-3xl">{topic.title}</h4>
@@ -71,7 +71,7 @@ export function RootSection(props: {
               <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
             </div>
           </button>
-          {open ?? (initialOpen && <ValidationInformation />)}
+          {open && <ValidationInformation />}
         </div>
       )}
     </div>

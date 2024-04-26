@@ -52,17 +52,35 @@ export const UITab = () => {
       {validations.map((validation, index, arr) => (
         <div key={validation.name}>
           <div className="w-full text-left flex justify-between p-2">
-            <label htmlFor={validation.name} className="text-xl">
+            <label htmlFor={validation.name} className="text-xl select-none">
               {validation.name}
             </label>
-            <input
-              id={validation.name}
-              name={validation.name}
-              checked={shownValidations.includes(validation.name)}
-              type="checkbox"
-              className=""
-              onChange={changeValidations(validation.name)}
-            />
+            <div className="relative inline-block w-10 mr-4 align-top select-none ">
+              <div
+                className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
+                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
+                transition-all duration-400 ease-in-out ${
+                  shownValidations.includes(validation.name)
+                    ? "bg-red-200 "
+                    : "bg-green-200 "
+                }`}
+              >
+                <input
+                  id={validation.name}
+                  name={validation.name}
+                  checked={shownValidations.includes(validation.name)}
+                  type="checkbox"
+                  onChange={changeValidations(validation.name)}
+                  className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
+                  transition-all duration-400 ease-in-out bg-black
+                  ${
+                    shownValidations.includes(validation.name)
+                      ? "left-2 "
+                      : "left-8"
+                  } `}
+                />
+              </div>
+            </div>
           </div>
           {index !== arr.length - 1 && <hr />}
         </div>

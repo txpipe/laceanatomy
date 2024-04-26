@@ -69,7 +69,6 @@ export function ValidationInformation() {
   const shownValidations =
     new URLSearchParams(location.search).get(SearchParams.LIST)?.split(",") ??
     [];
-
   return (
     <div
       className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
