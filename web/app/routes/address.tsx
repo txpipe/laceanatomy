@@ -1,13 +1,9 @@
-import {
-  ActionFunctionArgs,
-  json,
-  LoaderFunctionArgs,
-  type MetaFunction,
-} from "@remix-run/node";
-import { parseAddress } from "./address.server";
+import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, EmptyBlock, HexBlock, logCuriosity } from "~/components";
 import { PropsWithChildren } from "react";
+import { Button, EmptyBlock, HexBlock } from "../components";
+import { logCuriosity } from "../utils";
+import { parseAddress } from "./address.server";
 
 export const meta: MetaFunction = () => {
   return [

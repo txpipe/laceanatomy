@@ -1,23 +1,19 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
-import { Button, logCuriosity, RootSection } from "../components";
+import { useState } from "react";
+import SettingsIcon from "../../public/settings.svg";
+import { Button, ConfigsModal, Input, RootSection } from "../components";
+import {
+  DataProps,
+  Eras,
+  IContext,
+  IValidation,
+  Networks,
+  ProtocolType,
+} from "../interfaces";
+import { decimalToFraction, initialProtPps, logCuriosity } from "../utils";
 import * as server from "./tx.server";
 import TOPICS from "./tx.topics";
-
-export interface IValidation {
-  name: string;
-  value: boolean;
-  description: string;
-}
-
-export interface IValidations {
-  validations: IValidation[];
-}
-
-export interface DataProps extends server.Section {
-  validations: IValidation[];
-  raw?: string;
-}
 
 export const meta: MetaFunction = () => {
   return [
@@ -29,9 +25,72 @@ export const meta: MetaFunction = () => {
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const raw = formData.get("raw");
+  const era = formData.get("Era");
+  const net = formData.get("Network");
+  const [a0Numerator, a0Denominator] = decimalToFraction(
+    Number(formData.get("A0"))
+  );
+  const [rhoNumerator, rhoDenominator] = decimalToFraction(
+    Number(formData.get("Rho"))
+  );
+  const [tauNumerator, tauDenominator] = decimalToFraction(
+    Number(formData.get("Tau"))
+  );
+  const [decentralisationParamNumerator, decentralisationParamDenominator] =
+    decimalToFraction(Number(formData.get("Decentralisation_param")));
+  const [extraEntropyNumerator, extraEntropyDenominator] = decimalToFraction(
+    Number(formData.get("Extra_entropy"))
+  );
+  const [priceMemNumerator, priceMemDenominator] = decimalToFraction(
+    Number(formData.get("Price_mem"))
+  );
+  const [priceStepNumerator, priceStepDenominator] = decimalToFraction(
+    Number(formData.get("Price_step"))
+  );
 
   if (raw) {
-    const { section, validations } = server.safeParseTx(raw.toString());
+    const { section, validations } = server.safeParseTx(raw.toString(), {
+      epoch: Number(formData.get("Epoch")),
+      minFeeA: Number(formData.get("Min_fee_a")),
+      minFeeB: Number(formData.get("Min_fee_b")),
+      maxBlockSize: Number(formData.get("Max_block_size")),
+      maxTxSize: Number(formData.get("Max_tx_size")),
+      maxBlockHeaderSize: Number(formData.get("Max_block_header_size")),
+      keyDeposit: Number(formData.get("Key_deposit")),
+      poolDeposit: Number(formData.get("Pool_deposit")),
+      eMax: Number(formData.get("E_max")),
+      nOpt: Number(formData.get("N_opt")),
+      a0Numerator: a0Numerator,
+      a0Denominator: a0Denominator,
+      rhoNumerator: rhoNumerator,
+      rhoDenominator: rhoDenominator,
+      tauNumerator: tauNumerator,
+      tauDenominator: tauDenominator,
+      decentralisationParamNumerator: decentralisationParamNumerator,
+      decentralisationParamDenominator: decentralisationParamDenominator,
+      extraEntropyNumerator: extraEntropyNumerator,
+      extraEntropyDenominator: extraEntropyDenominator,
+      protocolMajorVer: Number(formData.get("Protocol_major_ver")),
+      protocolMinorVer: Number(formData.get("Protocol_minor_ver")),
+      minUtxo: Number(formData.get("Min_utxo")),
+      minPoolCost: Number(formData.get("Min_pool_cost")),
+      priceMemNumerator: priceMemNumerator,
+      priceMemDenominator: priceMemDenominator,
+      priceStepNumerator: priceStepNumerator,
+      priceStepDenominator: priceStepDenominator,
+      maxTxExMem: Number(formData.get("Max_tx_ex_mem")),
+      maxTxExSteps: Number(formData.get("Max_tx_ex_steps")),
+      maxBlockExMem: Number(formData.get("Max_block_ex_mem")),
+      maxBlockExSteps: Number(formData.get("Max_block_ex_steps")),
+      maxValSize: Number(formData.get("Max_val_size")),
+      collateralPercent: Number(formData.get("Collateral_percent")),
+      maxCollateralInputs: Number(formData.get("Max_collateral_inputs")),
+      coinsPerUtxoSize: Number(formData.get("Coins_per_utxo_size")),
+      coinsPerUtxoWord: Number(formData.get("Coins_per_utxo_word")),
+      blockSlot: Number(formData.get("Block_slot")),
+      era: era?.toString() ?? "Babbage",
+      network: net?.toString() ?? "Mainnet",
+    });
     return json({
       ...section,
       raw,
@@ -50,7 +109,19 @@ function ExampleCard(props: { title: string; address: string }) {
         className="border-2 rounded-lg p-4 shadow bg-gray-100 cursor-pointer flex flex-col w-full h-full text-left"
       >
         <h3 className="text-xl">{props.title}</h3>
-        <input type="hidden" value={props.address} name="raw" />
+        <input type="hidden" readOnly value={props.address} name="raw" />
+        <input readOnly value="Mainnet" name="Network" className="hidden" />
+        <input readOnly value="Babbage" name="Era" className="hidden" />
+        <input name="Block_slot" readOnly value={72316896} className="hidden" />
+        {initialProtPps.map((param) => (
+          <input
+            key={param.name}
+            readOnly
+            value={param.value}
+            name={param.name}
+            className="hidden"
+          />
+        ))}
         <code className="w-full break-words block mt-4 text-gray-400">
           {props.address.substring(0, 30)}...
         </code>
@@ -61,54 +132,37 @@ function ExampleCard(props: { title: string; address: string }) {
 
 export default function Index() {
   const data: DataProps | undefined = useActionData();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [protocolParams, setProtocolParams] =
+    useState<ProtocolType[]>(initialProtPps);
+
+  const [otherContext, setOtherContext] = useState<IContext>({
+    blockSlot: 72316896,
+    selectedEra: Eras.Babbage,
+    selectedNetwork: Networks.Mainnet,
+  });
 
   if (data) logCuriosity(data);
 
   const validations: IValidation[] = data?.validations || [];
+  const era = data?.era || "";
 
-  const validations: IValidation[] = [
-    { name: "Non empty inputs", value: true, description: "Sucessful" },
-    {
-      name: "All inputs in utxos",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Validity interval", value: true, description: "Sucessful" },
-    { name: "Fee", value: true, description: "Sucessful" },
-    {
-      name: "Preservation of value",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    {
-      name: "Min lovelace per UTxO",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Output value size", value: true, description: "Successful" },
-    { name: "Network Id", value: true, description: "Successful" },
-    { name: "Tx size", value: true, description: "Successful" },
-    { name: "Tx execution units", value: true, description: "Successful" },
-    { name: "Minting", value: true, description: "Successful" },
-    {
-      name: "Well formed",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Script witness", value: true, description: "Successful" },
-    { name: "Languages", value: true, description: "Successful" },
-    {
-      name: "Auxiliary data hash",
-      value: false,
-      description:
-        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Porro id maiores exercitationem asperiores molestias assumenda doloremque magnam fugit. Iure dolorum fugit facilis autem incidunt vero necessitatibus consectetur ducimus recusandae blanditiis!",
-    },
-    { name: "Script data hash", value: true, description: "Successful" },
-  ];
+  const handleModal = () => setModalOpen((prev) => !prev);
+
+  const changeParam =
+    (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setProtocolParams((prev: ProtocolType[]) => {
+        const updatedParams = [...prev];
+        updatedParams[index] = {
+          ...updatedParams[index],
+          value:
+            Number(e.target.value) >= 0
+              ? Number(e.target.value)
+              : updatedParams[index].value,
+        };
+        return updatedParams;
+      });
+    };
 
   return (
     <main className="mt-10 px-4">
@@ -118,18 +172,39 @@ export default function Index() {
         inspect its contents.
       </p>
       <div className="block mt-8">
-        <Form method="POST">
-          <input
+        <Form
+          method="POST"
+          onSubmit={() => {
+            setModalOpen(false);
+          }}
+        >
+          <Input
             type="text"
             autoComplete="off"
             defaultValue={data?.raw}
             name="raw"
-            className="block w-full px-4 py-2 mt-4 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8  appearance-none text-black placeholder-gray-400 text-2xl outline-none"
             placeholder="Enter the CBOR for any Cardano Tx using HEX-encoding"
           />
-          <div className="flex flex-row justify-end mt-4">
+          <div className="flex flex-row justify-end mt-4 gap-3">
+            <Button
+              type="button"
+              onClick={handleModal}
+              color="pink"
+              className="hover:bg-pink-400"
+            >
+              <img alt="" src={SettingsIcon} /> Configs
+            </Button>
             <Button type="submit">Dissect</Button>
           </div>
+          {modalOpen && (
+            <ConfigsModal
+              closeModal={handleModal}
+              protocolParams={protocolParams}
+              changeParam={changeParam}
+              otherContext={otherContext}
+              setOtherContext={setOtherContext}
+            />
+          )}
         </Form>
       </div>
 
@@ -148,7 +223,12 @@ export default function Index() {
       )}
 
       {!!data && (
-        <RootSection data={data} topics={TOPICS} validations={validations} />
+        <RootSection
+          data={data}
+          topics={TOPICS}
+          validations={validations}
+          era={era}
+        />
       )}
     </main>
   );
