@@ -1,6 +1,7 @@
 import { useLocation } from "@remix-run/react";
 import { Section } from "napi-pallas";
 import { useState } from "react";
+import { EraType } from "../interfaces";
 import { SearchParams, getTopicMeta } from "../utils";
 import { HexBlock, PropBlock, TopicMeta } from "./constructors";
 import { DataSection, ValidationInformation } from "./index";
@@ -8,13 +9,13 @@ import { DataSection, ValidationInformation } from "./index";
 export function RootSection(props: {
   data: Section;
   topics: Record<string, TopicMeta>;
-  era: string;
+  era: EraType;
 }) {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialOpen = searchParams.get(SearchParams.OPEN) === "true";
   const goesBeginning = searchParams.get(SearchParams.BEGINNING) === "true";
-  const [open, setOpen] = useState<boolean | undefined>(undefined);
+  const [open, setOpen] = useState<boolean>(initialOpen);
   const handleClick = () => setOpen(!open);
   const topic = getTopicMeta(props.data.topic, props.topics);
 

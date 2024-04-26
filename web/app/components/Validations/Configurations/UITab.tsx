@@ -13,7 +13,7 @@ export const UITab = () => {
 
   const changeValidations =
     (validation: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      const isChecked = event.target.checked;
+      const isChecked = !event.target.checked;
       const newSearchParams = new URLSearchParams(location.search);
       const currentValues =
         newSearchParams.get(SearchParams.LIST)?.split(",") ?? [];
@@ -33,7 +33,7 @@ export const UITab = () => {
     };
 
   const changeQuery =
-    (q: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    (q: SearchParams) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const isChecked = e.target.checked;
       const newSearchParams = new URLSearchParams(location.search);
 
@@ -61,22 +61,22 @@ export const UITab = () => {
                 border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
                 transition-all duration-400 ease-in-out ${
                   shownValidations.includes(validation.name)
-                    ? "bg-red-200 "
-                    : "bg-green-200 "
+                    ? "bg-green-200 "
+                    : "bg-red-200 "
                 }`}
               >
                 <input
                   id={validation.name}
                   name={validation.name}
-                  checked={shownValidations.includes(validation.name)}
+                  defaultChecked={shownValidations.includes(validation.name)}
                   type="checkbox"
                   onChange={changeValidations(validation.name)}
                   className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
                   transition-all duration-400 ease-in-out bg-black
                   ${
                     shownValidations.includes(validation.name)
-                      ? "left-2 "
-                      : "left-8"
+                      ? "left-8"
+                      : "left-2"
                   } `}
                 />
               </div>
@@ -93,25 +93,49 @@ export const UITab = () => {
           <label htmlFor={"alwaysOpen"} className="text-xl">
             Validations section always open
           </label>
-          <input
-            id={"alwaysOpen"}
-            checked={initialOpen}
-            type="checkbox"
-            className=""
-            onChange={changeQuery(SearchParams.OPEN)}
-          />
+          <div className="relative inline-block w-10 mr-4 align-top select-none ">
+            <div
+              className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
+                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
+                transition-all duration-400 ease-in-out ${
+                  initialOpen ? "bg-green-200 " : "bg-red-200 "
+                }`}
+            >
+              <input
+                id={"alwaysOpen"}
+                checked={initialOpen}
+                type="checkbox"
+                onChange={changeQuery(SearchParams.OPEN)}
+                className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
+                  transition-all duration-400 ease-in-out bg-black
+                  ${initialOpen ? "left-8 " : "left-2"} `}
+              />
+            </div>
+          </div>
         </div>
         <div className="w-full text-left flex justify-between p-2">
           <label htmlFor={"beginning"} className="text-xl">
             Validations section at the beginning
           </label>
-          <input
-            id={"beginning"}
-            checked={beginning}
-            type="checkbox"
-            className=""
-            onChange={changeQuery(SearchParams.BEGINNING)}
-          />
+          <div className="relative inline-block w-10 mr-4 align-top select-none ">
+            <div
+              className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
+                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
+                transition-all duration-400 ease-in-out ${
+                  beginning ? "bg-green-200 " : "bg-red-200 "
+                }`}
+            >
+              <input
+                id={"beginning"}
+                checked={beginning}
+                type="checkbox"
+                onChange={changeQuery(SearchParams.BEGINNING)}
+                className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
+                  transition-all duration-400 ease-in-out bg-black
+                  ${beginning ? "left-8 " : "left-2"} `}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

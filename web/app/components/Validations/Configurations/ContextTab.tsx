@@ -44,32 +44,6 @@ export const ContextTab = () => {
   };
   return (
     <div className="flex flex-col overflow-y-auto h-96">
-      <div className="text-left text-3xl mb-3">Protocol Parameters</div>
-      <div className="grid xl:grid-cols-5 lg:grid-cols-2 gap-3 text-left w-full p-2">
-        {paramsList.map((param, index) => (
-          <div key={param.name}>
-            <label htmlFor={param.name} className="">
-              {param.name.replace(/_/g, " ")}
-            </label>
-            <Input
-              id={param.name}
-              name={param.name}
-              type="number"
-              disabled={isByron}
-              value={Number(param.value).toString() ?? 0}
-              onChange={changeParam(index)}
-              className={`block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
-            ${
-              isByron
-                ? "bg-slate-300 cursor-not-allowed"
-                : "focus:bg-pink-200 hover:bg-pink-200"
-            }`}
-              inputSize="small"
-            />
-          </div>
-        ))}
-      </div>
-      <hr className="border-2 border-black my-4" />
       <div>
         <div className="text-left text-3xl mt-3">Select a Network</div>
         {/* To get the network from the form*/}
@@ -121,15 +95,42 @@ export const ContextTab = () => {
       </div>
       <hr className="border-2 border-black my-4" />
       <div>
-        <div className="text-left text-3xl mt-3">Select a Block Slot</div>
+        <div className="text-left text-3xl m-3">Select a Block Slot</div>
         <Input
           type="number"
           name="Block_slot"
           value={context.blockSlot}
           onChange={changeBlockSlot}
-          className="focus:bg-pink-200"
+          className="focus:bg-pink-200 mb-3"
           inputSize="small"
         />
+      </div>
+
+      <hr className="border-2 border-black my-4" />
+      <div className="text-left text-3xl mb-3">Protocol Parameters</div>
+      <div className="grid xl:grid-cols-5 lg:grid-cols-2 gap-3 text-left w-full p-2">
+        {paramsList.map((param, index) => (
+          <div key={param.name}>
+            <label htmlFor={param.name} className="">
+              {param.name.replace(/_/g, " ")}
+            </label>
+            <Input
+              id={param.name}
+              name={param.name}
+              type="number"
+              disabled={isByron}
+              value={Number(param.value).toString() ?? 0}
+              onChange={changeParam(index)}
+              className={`block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
+            ${
+              isByron
+                ? "bg-slate-300 cursor-not-allowed"
+                : "focus:bg-pink-200 hover:bg-pink-200"
+            }`}
+              inputSize="small"
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
