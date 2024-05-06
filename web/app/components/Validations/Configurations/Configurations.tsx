@@ -1,12 +1,14 @@
 import { useEffect } from "react";
-import { Button } from "../../../components";
+import { Button } from "~/components/Button";
+import { IProtocolParam } from "~/interfaces";
 import { Tabs } from "./Tabs";
 
 interface ConfigsModalProps {
   closeModal: () => void;
+  latestParams: IProtocolParam[] | undefined;
 }
 
-export function ConfigsModal({ closeModal }: ConfigsModalProps) {
+export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
   // To close config modal on esc press
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -33,10 +35,25 @@ export function ConfigsModal({ closeModal }: ConfigsModalProps) {
           >
             +
           </button>
-          <Tabs />
-          <Button type="submit" color="pink" className="hover:bg-pink-400 mt-3">
-            Submit
-          </Button>
+          <Tabs latestParams={latestParams} />
+          <div className="flex gap-3 h-full justify-center">
+            <Button
+              type="button"
+              color="pink"
+              className="hover:bg-pink-400 mt-3"
+              onClick={closeModal}
+            >
+              Submit
+            </Button>
+            <Button
+              type="submit"
+              color="pink"
+              className="hover:bg-pink-400 mt-3"
+              onClick={closeModal}
+            >
+              Submit & Dissect
+            </Button>
+          </div>
         </div>
       </div>
     </div>

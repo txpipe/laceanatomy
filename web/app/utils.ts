@@ -1,3 +1,5 @@
+import { ProtocolParams } from "napi-pallas";
+import { Dispatch, SetStateAction } from "react";
 import { TopicMeta } from "./components/constructors";
 import { DataProps, IProtocolParam, IValidation } from "./interfaces";
 
@@ -143,43 +145,45 @@ export function formDataToContext(formData: FormData) {
     Number(formData.get("Price_step"))
   );
   return {
-    epoch: Number(formData.get("Epoch")),
-    minFeeA: Number(formData.get("Min_fee_a")),
-    minFeeB: Number(formData.get("Min_fee_b")),
-    maxBlockSize: Number(formData.get("Max_block_size")),
-    maxTxSize: Number(formData.get("Max_tx_size")),
-    maxBlockHeaderSize: Number(formData.get("Max_block_header_size")),
-    keyDeposit: Number(formData.get("Key_deposit")),
-    poolDeposit: Number(formData.get("Pool_deposit")),
-    eMax: Number(formData.get("E_max")),
-    nOpt: Number(formData.get("N_opt")),
-    a0Numerator: a0Numerator,
-    a0Denominator: a0Denominator,
-    rhoNumerator: rhoNumerator,
-    rhoDenominator: rhoDenominator,
-    tauNumerator: tauNumerator,
-    tauDenominator: tauDenominator,
-    decentralisationParamNumerator: decentralisationParamNumerator,
-    decentralisationParamDenominator: decentralisationParamDenominator,
-    extraEntropyNumerator: extraEntropyNumerator,
-    extraEntropyDenominator: extraEntropyDenominator,
-    protocolMajorVer: Number(formData.get("Protocol_major_ver")),
-    protocolMinorVer: Number(formData.get("Protocol_minor_ver")),
-    minUtxo: Number(formData.get("Min_utxo")),
-    minPoolCost: Number(formData.get("Min_pool_cost")),
-    priceMemNumerator: priceMemNumerator,
-    priceMemDenominator: priceMemDenominator,
-    priceStepNumerator: priceStepNumerator,
-    priceStepDenominator: priceStepDenominator,
-    maxTxExMem: Number(formData.get("Max_tx_ex_mem")),
-    maxTxExSteps: Number(formData.get("Max_tx_ex_steps")),
-    maxBlockExMem: Number(formData.get("Max_block_ex_mem")),
-    maxBlockExSteps: Number(formData.get("Max_block_ex_steps")),
-    maxValSize: Number(formData.get("Max_val_size")),
-    collateralPercent: Number(formData.get("Collateral_percent")),
-    maxCollateralInputs: Number(formData.get("Max_collateral_inputs")),
-    coinsPerUtxoSize: Number(formData.get("Coins_per_utxo_size")),
-    coinsPerUtxoWord: Number(formData.get("Coins_per_utxo_word")),
+    protocolParams: {
+      epoch: Number(formData.get("Epoch")),
+      minFeeA: Number(formData.get("Min_fee_a")),
+      minFeeB: Number(formData.get("Min_fee_b")),
+      maxBlockSize: Number(formData.get("Max_block_size")),
+      maxTxSize: Number(formData.get("Max_tx_size")),
+      maxBlockHeaderSize: Number(formData.get("Max_block_header_size")),
+      keyDeposit: Number(formData.get("Key_deposit")),
+      poolDeposit: Number(formData.get("Pool_deposit")),
+      eMax: Number(formData.get("E_max")),
+      nOpt: Number(formData.get("N_opt")),
+      a0Numerator: a0Numerator,
+      a0Denominator: a0Denominator,
+      rhoNumerator: rhoNumerator,
+      rhoDenominator: rhoDenominator,
+      tauNumerator: tauNumerator,
+      tauDenominator: tauDenominator,
+      decentralisationParamNumerator: decentralisationParamNumerator,
+      decentralisationParamDenominator: decentralisationParamDenominator,
+      extraEntropyNumerator: extraEntropyNumerator,
+      extraEntropyDenominator: extraEntropyDenominator,
+      protocolMajorVer: Number(formData.get("Protocol_major_ver")),
+      protocolMinorVer: Number(formData.get("Protocol_minor_ver")),
+      minUtxo: Number(formData.get("Min_utxo")),
+      minPoolCost: Number(formData.get("Min_pool_cost")),
+      priceMemNumerator: priceMemNumerator,
+      priceMemDenominator: priceMemDenominator,
+      priceStepNumerator: priceStepNumerator,
+      priceStepDenominator: priceStepDenominator,
+      maxTxExMem: Number(formData.get("Max_tx_ex_mem")),
+      maxTxExSteps: Number(formData.get("Max_tx_ex_steps")),
+      maxBlockExMem: Number(formData.get("Max_block_ex_mem")),
+      maxBlockExSteps: Number(formData.get("Max_block_ex_steps")),
+      maxValSize: Number(formData.get("Max_val_size")),
+      collateralPercent: Number(formData.get("Collateral_percent")),
+      maxCollateralInputs: Number(formData.get("Max_collateral_inputs")),
+      coinsPerUtxoSize: Number(formData.get("Coins_per_utxo_size")),
+      coinsPerUtxoWord: Number(formData.get("Coins_per_utxo_word")),
+    },
     blockSlot: Number(formData.get("Block_slot")),
     era: era?.toString() ?? "Babbage",
     network: net?.toString() ?? "Mainnet",
@@ -194,3 +198,48 @@ export enum SearchParams {
   BEGINNING = "beginning",
   LIST = "list",
 }
+
+const reducibleParams = [
+  "A0",
+  "Rho",
+  "Tau",
+  "DecentralisationParam",
+  "ExtraEntropy",
+  "PriceMem",
+  "PriceStep",
+];
+
+export const paramsParser = (
+  parsedParams: ProtocolParams,
+  setParams: Dispatch<SetStateAction<IProtocolParam[] | undefined>>
+) => {
+  if (parsedParams && !("error" in parsedParams)) {
+    const newParams: ProtocolParams = JSON.parse(JSON.stringify(parsedParams));
+
+    const latestParams: IProtocolParam[] = Object.entries(newParams).map(
+      ([key, value]) => {
+        const parsedKey = key
+          .split(/(?=[A-Z])/)
+          .join(" ")
+          .replace("Transaction", "Tx")
+          .replace("Numerator", "");
+
+        if (reducibleParams.includes(parsedKey)) {
+          const denominator =
+            newParams[`${parsedKey}Denominator` as keyof ProtocolParams];
+          return {
+            name: parsedKey.charAt(0).toUpperCase() + parsedKey.slice(1),
+            value: Number(value) / denominator,
+          };
+        }
+        return {
+          name: parsedKey.charAt(0).toUpperCase() + parsedKey.slice(1),
+          value: Number(value),
+        };
+      }
+    );
+    setParams(
+      latestParams.filter((param) => !param.name.includes("Denominator"))
+    );
+  }
+};

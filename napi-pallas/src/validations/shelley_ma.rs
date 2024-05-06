@@ -210,42 +210,43 @@ pub fn validate_shelley_ma(
 ) -> Validations {
   let tx_body: &TransactionBody = &mtx_sma.transaction_body;
   let tx_wits: &MintedWitnessSet = &mtx_sma.transaction_witness_set;
+  let ppt_params = context.protocol_params;
   let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
   let prot_params = ShelleyProtParams {
-    minfee_a: context.min_fee_a,
-    minfee_b: context.min_fee_b,
-    max_block_body_size: context.max_block_size,
-    max_transaction_size: context.max_tx_size,
-    max_block_header_size: context.max_block_header_size,
-    key_deposit: context.key_deposit as u64,
-    pool_deposit: context.pool_deposit as u64,
-    maximum_epoch: context.e_max as u64,
-    desired_number_of_stake_pools: context.n_opt,
+    minfee_a: ppt_params.min_fee_a,
+    minfee_b: ppt_params.min_fee_b,
+    max_block_body_size: ppt_params.max_block_size,
+    max_transaction_size: ppt_params.max_tx_size,
+    max_block_header_size: ppt_params.max_block_header_size,
+    key_deposit: ppt_params.key_deposit as u64,
+    pool_deposit: ppt_params.pool_deposit as u64,
+    maximum_epoch: ppt_params.e_max as u64,
+    desired_number_of_stake_pools: ppt_params.n_opt,
     pool_pledge_influence: RationalNumber {
-      numerator: context.a0_numerator as u64,
-      denominator: context.a0_denominator as u64,
+      numerator: ppt_params.a0_numerator as u64,
+      denominator: ppt_params.a0_denominator as u64,
     },
     expansion_rate: RationalNumber {
-      numerator: context.rho_numerator as u64,
-      denominator: context.rho_denominator as u64,
+      numerator: ppt_params.rho_numerator as u64,
+      denominator: ppt_params.rho_denominator as u64,
     },
     treasury_growth_rate: RationalNumber {
-      numerator: context.tau_numerator as u64,
-      denominator: context.tau_denominator as u64,
+      numerator: ppt_params.tau_numerator as u64,
+      denominator: ppt_params.tau_denominator as u64,
     },
     decentralization_constant: RationalNumber {
-      numerator: context.decentralisation_param_numerator as u64,
-      denominator: context.decentralisation_param_denominator as u64,
+      numerator: ppt_params.decentralisation_param_numerator as u64,
+      denominator: ppt_params.decentralisation_param_denominator as u64,
     },
     extra_entropy: Nonce {
       variant: NonceVariant::NeutralNonce,
       hash: None,
     },
     protocol_version: (
-      context.protocol_minor_ver as u64,
-      context.protocol_major_ver as u64,
+      ppt_params.protocol_minor_ver as u64,
+      ppt_params.protocol_major_ver as u64,
     ),
-    min_utxo_value: context.min_utxo as u64,
+    min_utxo_value: ppt_params.min_utxo as u64,
   };
 
   let mut magic = 764824073; // For mainnet

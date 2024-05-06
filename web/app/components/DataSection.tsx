@@ -1,6 +1,6 @@
 import { Section } from "napi-pallas";
 import { useState } from "react";
-import { getTopicMeta } from "../utils";
+import { getTopicMeta } from "~/utils";
 import { EmptyBlock, HexBlock, PropBlock, TopicMeta } from "./constructors";
 
 export function DataSection(props: {

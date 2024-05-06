@@ -20,7 +20,7 @@ export interface Output {
   bytes?: string
   address?: AddressDiagnostic
 }
-export interface ValidationContext {
+export interface ProtocolParams {
   epoch: number
   minFeeA: number
   minFeeB: number
@@ -58,6 +58,10 @@ export interface ValidationContext {
   maxCollateralInputs: number
   coinsPerUtxoSize: number
   coinsPerUtxoWord: number
+  error?: string
+}
+export interface ValidationContext {
+  protocolParams: ProtocolParams
   network: string
   era: string
   blockSlot: number
@@ -75,12 +79,13 @@ export interface Section {
   children: Array<Section>
 }
 export function parseAddress(raw: string): Output
+export function safeParseBlock(raw: string): Section
 export interface SectionValidation {
   section: Section
   validations: Validations
 }
 export function safeParseTx(raw: string, context: ValidationContext): SectionValidation
-export function safeParseBlock(raw: string): Section
+export function getLatestParams(network: string): ProtocolParams
 export interface Validation {
   name: string
   value: boolean

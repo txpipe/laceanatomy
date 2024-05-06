@@ -1,19 +1,31 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
-import { Form, useActionData, useNavigate } from "@remix-run/react";
+import {
+  Form,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+} from "@remix-run/react";
+import { Validation } from "napi-pallas";
 import { useContext, useEffect, useState } from "react";
-import SettingsIcon from "../../public/settings.svg";
-import { Button, ConfigsModal, Input, RootSection } from "../components";
-import { ValidationsContext } from "../contexts/validations.context";
-import { DataProps } from "../interfaces";
+import { Button, ConfigsModal, Input, RootSection } from "~/components";
+import { ValidationsContext } from "~/contexts/validations.context";
+import {
+  DataProps,
+  EraType,
+  Eras,
+  IProtocolParam,
+  Networks,
+} from "~/interfaces";
+import * as server from "~/routes/tx.server";
+import TOPICS from "~/routes/tx.topics";
 import {
   SearchParams,
   exampleCbor,
   formDataToContext,
   initialProtPps,
-  logCuriosity,
-} from "../utils";
-import * as server from "./tx.server";
-import TOPICS from "./tx.topics";
+  paramsParser,
+} from "~/utils";
+import SettingsIcon from "../../public/settings.svg";
 
 export const meta: MetaFunction = () => {
   return [
@@ -31,17 +43,30 @@ export async function action({ request }: ActionFunctionArgs) {
       raw.toString(),
       formDataToContext(formData)
     );
-    return json({
-      ...section,
-      raw,
-      ...validations,
-    });
-  } else {
-    return json({ error: "an empty value? seriously?" });
+    if (!section.error) {
+      return json({
+        ...section,
+        raw: String(raw),
+        ...validations,
+      });
+    }
+    return json({ error: section.error });
+  }
+  return json({ error: "an empty value? seriously?" });
+}
+
+export async function loader() {
+  try {
+    const mainnetParams = server.getLatestParams(Networks.Mainnet);
+    const preprodParams = server.getLatestParams(Networks.Preprod);
+    const previewParams = server.getLatestParams(Networks.Preview);
+    return json({ mainnetParams, preprodParams, previewParams });
+  } catch (error) {
+    return json({ error: "Error fetching protocol parameters" });
   }
 }
 
-function ExampleCard(props: { title: string; address: string }) {
+export function ExampleCard(props: { title: string; address: string }) {
   return (
     <Form method="POST" replace={false}>
       <button
@@ -71,31 +96,39 @@ function ExampleCard(props: { title: string; address: string }) {
 }
 
 export default function Index() {
-  const initData: DataProps | undefined = useActionData();
-  const { setValidations, context, validations } =
-    useContext(ValidationsContext);
-  const [data, setData] = useState<DataProps | undefined>(initData);
+  const initData = useActionData<typeof action>();
+  const latestParams = useLoaderData<typeof loader>();
+  const {
+    setValidations,
+    context,
+    validations: contextValidations,
+  } = useContext(ValidationsContext);
+  const [data, setData] = useState<DataProps | undefined>(undefined);
+  const [params, setParams] = useState<IProtocolParam[] | undefined>(undefined);
   const [rawCbor, setRawCor] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const handleModal = () => setModalOpen((prev) => !prev);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     if (initData) {
       const newSearchParams = new URLSearchParams(location.search);
-      setData(initData);
-      if (initData.validations) {
-        setValidations(initData.validations);
+      const parsedInitData = JSON.parse(JSON.stringify(initData));
+      setData(parsedInitData);
+      if (parsedInitData.validations) {
+        setValidations(parsedInitData.validations);
         if (!newSearchParams.get(SearchParams.LIST))
           newSearchParams.set(
             SearchParams.LIST,
-            validations.map((v) => v.name).join(",")
+            contextValidations.map((v) => v.name).join(",")
           );
         // When era is changed, every validation is shown
-        if (initData.era !== context.selectedEra) {
+        if (parsedInitData.era !== context.selectedEra) {
           newSearchParams.delete(SearchParams.LIST);
           newSearchParams.set(
             SearchParams.LIST,
-            initData.validations.map((v) => v.name).join(",")
+            parsedInitData.validations.map((v: Validation) => v.name).join(",")
           );
         }
         // When the example is used
@@ -105,16 +138,22 @@ export default function Index() {
         if (!newSearchParams.get(SearchParams.BEGINNING))
           newSearchParams.set(SearchParams.BEGINNING, "true");
       }
-      navigate(`?${newSearchParams.toString()}`, { replace: true });
+      navigate(`?${newSearchParams.toString()}`, { replace: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.selectedEra, initData]);
+    if (latestParams) {
+      const parsedParams = JSON.parse(JSON.stringify(latestParams));
+      if (context.selectedNetwork === Networks.Mainnet)
+        paramsParser(parsedParams.mainnetParams, setParams);
+      if (context.selectedNetwork === Networks.Preprod)
+        paramsParser(parsedParams.preprodParams, setParams);
+      if (context.selectedNetwork === Networks.Preview)
+        paramsParser(parsedParams.previewParams, setParams);
+    }
+  }, [initData, context.selectedNetwork]);
 
-  if (data) logCuriosity(data);
+  // if (data) logCuriosity(data);
 
-  const era = data?.era || "";
-
-  const handleModal = () => setModalOpen((prev) => !prev);
+  const era: EraType = data?.era || Eras.Babbage;
 
   return (
     <main className="mt-10 px-4">
@@ -147,9 +186,11 @@ export default function Index() {
             >
               <img alt="" src={SettingsIcon} /> Configs
             </Button>
+            <div className={`${modalOpen ? "block" : "hidden"}`}>
+              <ConfigsModal closeModal={handleModal} latestParams={params} />
+            </div>
             <Button type="submit">Dissect</Button>
           </div>
-          {modalOpen && <ConfigsModal closeModal={handleModal} />}
         </Form>
       </div>
 

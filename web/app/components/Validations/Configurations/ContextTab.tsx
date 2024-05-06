@@ -1,11 +1,21 @@
 import { useContext } from "react";
-import { Button } from "../../../components/Button";
-import { Input } from "../../../components/Input";
-import { ValidationsContext } from "../../../contexts/validations.context";
-import { EraType, Eras, NetworkType, Networks } from "../../../interfaces";
-import { ByronPptParams } from "../../../utils";
+import { Button } from "~/components/Button";
+import { Input } from "~/components/Input";
+import { ValidationsContext } from "~/contexts/validations.context";
+import {
+  EraType,
+  Eras,
+  IProtocolParam,
+  NetworkType,
+  Networks,
+} from "~/interfaces";
+import { ByronPptParams } from "~/utils";
 
-export const ContextTab = () => {
+export const ContextTab = ({
+  latestParams,
+}: {
+  latestParams: IProtocolParam[] | undefined;
+}) => {
   const { context, setContext } = useContext(ValidationsContext);
   const isByron = context.selectedEra === Eras.Byron;
   const paramsList = isByron ? ByronPptParams : context.pptParams;
@@ -42,6 +52,15 @@ export const ContextTab = () => {
   const changeBlockSlot = (e: React.ChangeEvent<HTMLInputElement>) => {
     setContext({ ...context, blockSlot: Number(e.target.value) });
   };
+
+  function setLatestParams() {
+    if (!latestParams) return;
+    setContext((prev) => ({
+      ...prev,
+      pptParams: latestParams,
+    }));
+  }
+
   return (
     <div className="flex flex-col overflow-y-auto h-96">
       <div>
@@ -107,12 +126,21 @@ export const ContextTab = () => {
       </div>
 
       <hr className="border-2 border-black my-4" />
-      <div className="text-left text-3xl mb-3">Protocol Parameters</div>
+      <div className="flex items-center justify-between">
+        <div className="text-left text-3xl mb-3">Protocol Parameters</div>
+
+        <Button type="button" onClick={setLatestParams}>
+          Get latest Protocol Parameters
+        </Button>
+      </div>
       <div className="grid xl:grid-cols-5 lg:grid-cols-2 gap-3 text-left w-full p-2">
         {paramsList.map((param, index) => (
           <div key={param.name}>
             <label htmlFor={param.name} className="">
-              {param.name.replace(/_/g, " ")}
+              {param.name
+                .split("_")
+                .map((word) => word[0].toUpperCase() + word.slice(1))
+                .join(" ")}
             </label>
             <Input
               id={param.name}

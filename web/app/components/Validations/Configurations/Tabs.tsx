@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Button } from "../../../components";
-import { TabNames, TabType } from "../../../interfaces";
+import { Button } from "~/components/Button";
+import { IProtocolParam, TabNames, TabType } from "~/interfaces";
 import { ContextTab } from "./ContextTab";
 import { UITab } from "./UITab";
 
-export const Tabs = () => {
+export const Tabs = ({
+  latestParams,
+}: {
+  latestParams: IProtocolParam[] | undefined;
+}) => {
   const tabs: TabType[] = [TabNames.Context, TabNames.UI_Options];
   const [selected, setSelected] = useState<TabType>(TabNames.Context);
 
@@ -31,7 +35,7 @@ export const Tabs = () => {
       </div>
       <div className="mt-4 p-8 border-2 border-black rounded-2xl shadow">
         <div className={`${selected == TabNames.Context ? "block" : "hidden"}`}>
-          <ContextTab />
+          <ContextTab latestParams={latestParams} />
         </div>
 
         <div

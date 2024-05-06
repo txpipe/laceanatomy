@@ -12,7 +12,7 @@ mod validations;
 
 #[derive(Default)]
 #[napi(object)]
-pub struct ValidationContext {
+pub struct ProtocolParams {
   pub epoch: u32,
   pub min_fee_a: u32,
   pub min_fee_b: u32,
@@ -50,6 +50,19 @@ pub struct ValidationContext {
   pub max_collateral_inputs: u32,
   pub coins_per_utxo_size: i64,
   pub coins_per_utxo_word: i64,
+  pub error: Option<String>,
+}
+
+impl ProtocolParams {
+  fn new() -> Self {
+    Default::default()
+  }
+}
+
+#[derive(Default)]
+#[napi(object)]
+pub struct ValidationContext {
+  pub protocol_params: ProtocolParams,
 
   pub network: String,
   pub era: String,
@@ -190,6 +203,14 @@ pub fn parse_address(raw: String) -> address::Output {
   }
 }
 
+#[napi]
+pub fn safe_parse_block(raw: String) -> Section {
+  match block::parse(raw) {
+    Ok(x) => x,
+    Err(x) => x,
+  }
+}
+
 #[derive(Default)]
 #[napi(object)]
 pub struct SectionValidation {
@@ -204,7 +225,7 @@ pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidati
       let (section, validations) = x;
       SectionValidation {
         section,
-        validations: validations,
+        validations,
       }
     }
     Err(x) => SectionValidation {
@@ -214,15 +235,16 @@ pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidati
   }
 }
 
+#[tokio::main]
 #[napi]
-pub fn safe_parse_block(raw: String) -> Section {
-  match block::parse(raw) {
-    Ok(x) => x,
-    Err(x) => x,
+pub async fn get_latest_params(network: String) -> ProtocolParams {
+  match tx::get_epochs_latest_parameters(network).await {
+    Ok(params) => params,
+    Err(_) => ProtocolParams::new(),
   }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 #[napi(object)]
 pub struct Validation {
   pub name: String,
@@ -254,7 +276,7 @@ impl Validation {
   }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[napi(object)]
 pub struct Validations {
   pub validations: Vec<Validation>,

@@ -17,9 +17,9 @@
     "@remix-run/react": "^2.5.0",
     "@remix-run/serve": "^2.5.0",
     "isbot": "^4.1.0",
+    "napi-pallas": "../napi-pallas",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "napi-pallas": "../napi-pallas"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.5.0",

@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "@remix-run/react";
 import { useContext } from "react";
-import { ValidationsContext } from "../../../contexts/validations.context";
-import { SearchParams } from "../../../utils";
+import { ValidationsContext } from "~/contexts/validations.context";
+import { SearchParams } from "~/utils";
 
 export const UITab = () => {
   const { validations } = useContext(ValidationsContext);

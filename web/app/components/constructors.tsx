@@ -1,6 +1,6 @@
 import { Attribute } from "napi-pallas";
 import { PropsWithChildren } from "react";
-import { getTopicMeta } from "../utils";
+import { getTopicMeta } from "~/utils";
 
 export type TopicMeta = {
   title: string;

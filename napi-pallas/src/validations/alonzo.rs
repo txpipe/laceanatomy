@@ -235,65 +235,66 @@ fn validate_alonzo_fee(mtx_a: &MintedTx, utxos: &UTxOs, prot_pps: &AlonzoProtPar
 
 pub fn validate_alonzo(mtx_a: &MintedTx, context: ValidationContext) -> Validations {
   let tx_body: &TransactionBody = &mtx_a.transaction_body;
+  let ppt_params = context.protocol_params;
   let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
   let prot_params = AlonzoProtParams {
-    minfee_a: context.min_fee_a,
-    minfee_b: context.min_fee_b,
-    max_block_body_size: context.max_block_size,
-    max_transaction_size: context.max_tx_size,
-    max_block_header_size: context.max_block_header_size,
-    key_deposit: context.key_deposit as u64,
-    pool_deposit: context.pool_deposit as u64,
-    maximum_epoch: context.e_max as u64,
-    desired_number_of_stake_pools: context.n_opt,
+    minfee_a: ppt_params.min_fee_a,
+    minfee_b: ppt_params.min_fee_b,
+    max_block_body_size: ppt_params.max_block_size,
+    max_transaction_size: ppt_params.max_tx_size,
+    max_block_header_size: ppt_params.max_block_header_size,
+    key_deposit: ppt_params.key_deposit as u64,
+    pool_deposit: ppt_params.pool_deposit as u64,
+    maximum_epoch: ppt_params.e_max as u64,
+    desired_number_of_stake_pools: ppt_params.n_opt,
     pool_pledge_influence: RationalNumber {
-      numerator: context.a0_numerator as u64,
-      denominator: context.a0_denominator as u64,
+      numerator: ppt_params.a0_numerator as u64,
+      denominator: ppt_params.a0_denominator as u64,
     },
     expansion_rate: RationalNumber {
-      numerator: context.rho_numerator as u64,
-      denominator: context.rho_denominator as u64,
+      numerator: ppt_params.rho_numerator as u64,
+      denominator: ppt_params.rho_denominator as u64,
     },
     treasury_growth_rate: RationalNumber {
-      numerator: context.tau_numerator as u64,
-      denominator: context.tau_denominator as u64,
+      numerator: ppt_params.tau_numerator as u64,
+      denominator: ppt_params.tau_denominator as u64,
     },
     decentralization_constant: RationalNumber {
-      numerator: context.decentralisation_param_numerator as u64,
-      denominator: context.decentralisation_param_denominator as u64,
+      numerator: ppt_params.decentralisation_param_numerator as u64,
+      denominator: ppt_params.decentralisation_param_denominator as u64,
     },
     extra_entropy: Nonce {
       variant: NonceVariant::NeutralNonce,
       hash: None,
     },
     protocol_version: (
-      context.protocol_minor_ver as u64,
-      context.protocol_major_ver as u64,
+      ppt_params.protocol_minor_ver as u64,
+      ppt_params.protocol_major_ver as u64,
     ),
-    min_pool_cost: context.min_pool_cost as u64,
+    min_pool_cost: ppt_params.min_pool_cost as u64,
     cost_models_for_script_languages: KeyValuePairs::Def(vec![(Language::PlutusV1, vec![])]),
-    ada_per_utxo_byte: context.coins_per_utxo_size as u64,
+    ada_per_utxo_byte: ppt_params.coins_per_utxo_size as u64,
     execution_costs: ExUnitPrices {
       mem_price: RationalNumber {
-        numerator: context.price_mem_numerator as u64,
-        denominator: context.price_mem_denominator as u64,
+        numerator: ppt_params.price_mem_numerator as u64,
+        denominator: ppt_params.price_mem_denominator as u64,
       },
       step_price: RationalNumber {
-        numerator: context.price_step_numerator as u64,
-        denominator: context.price_step_denominator as u64,
+        numerator: ppt_params.price_step_numerator as u64,
+        denominator: ppt_params.price_step_denominator as u64,
       },
     },
     max_tx_ex_units: ExUnits {
-      mem: context.max_tx_ex_mem,
-      steps: context.max_tx_ex_steps as u64,
+      mem: ppt_params.max_tx_ex_mem,
+      steps: ppt_params.max_tx_ex_steps as u64,
     },
     max_block_ex_units: ExUnits {
-      mem: context.max_block_ex_mem,
-      steps: context.max_block_ex_steps as u64,
+      mem: ppt_params.max_block_ex_mem,
+      steps: ppt_params.max_block_ex_steps as u64,
     },
-    max_value_size: context.max_val_size,
-    collateral_percentage: context.collateral_percent,
-    max_collateral_inputs: context.max_collateral_inputs,
+    max_value_size: ppt_params.max_val_size,
+    collateral_percentage: ppt_params.collateral_percent,
+    max_collateral_inputs: ppt_params.max_collateral_inputs,
   };
 
   let mut magic = 764824073; // For mainnet

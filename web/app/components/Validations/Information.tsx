@@ -1,8 +1,8 @@
 import { useLocation } from "@remix-run/react";
 import { useContext, useState } from "react";
-import { ValidationsContext } from "../../contexts/validations.context";
-import { IValidation } from "../../interfaces";
-import { SearchParams } from "../../utils";
+import { ValidationsContext } from "~/contexts/validations.context";
+import { IValidation } from "~/interfaces";
+import { SearchParams } from "~/utils";
 
 function AccordionItem({ validation }: { validation: IValidation }) {
   const [open, setOpen] = useState(false);

@@ -5,7 +5,7 @@ import {
   IProtocolParam,
   IValidation,
   Networks,
-} from "../interfaces";
+} from "~/interfaces";
 
 export interface ValidationsContextType {
   validations: IValidation[];

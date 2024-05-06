@@ -6,15 +6,11 @@ export interface IValidation {
   description: string;
 }
 
-export interface IValidations {
-  validations: IValidation[];
-  era: string;
-}
-
 export interface DataProps extends server.Section {
-  validations: IValidation[];
-  era: string;
+  validations?: IValidation[];
+  era?: EraType;
   raw?: string;
+  error?: string;
 }
 
 export interface IProtocolParam {
