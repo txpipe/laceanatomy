@@ -4,6 +4,7 @@ export interface IValidation {
   name: string;
   value: boolean;
   description: string;
+  shown: boolean;
 }
 
 export interface DataProps extends server.Section {
@@ -47,4 +48,10 @@ export interface IContext {
   blockSlot: number;
   selectedEra: EraType;
   selectedNetwork: NetworkType;
+}
+
+export interface IUiConfigs {
+  alwaysOpen: boolean;
+  beginning: boolean;
+  validationsToSee: string[];
 }

@@ -1,8 +1,6 @@
-import { useLocation } from "@remix-run/react";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ValidationsContext } from "~/contexts/validations.context";
-import { IValidation } from "~/interfaces";
-import { SearchParams } from "~/utils";
+import { EraType, IValidation } from "~/interfaces";
 
 function AccordionItem({ validation }: { validation: IValidation }) {
   const [open, setOpen] = useState(false);
@@ -63,22 +61,47 @@ function AccordionItem({ validation }: { validation: IValidation }) {
   );
 }
 
-export function ValidationInformation() {
+export function ValidationInformation({
+  era,
+  initialOpen,
+}: {
+  era: EraType;
+  initialOpen: boolean;
+}) {
   const { validations } = useContext(ValidationsContext);
-  const location = useLocation();
-  const shownValidations =
-    new URLSearchParams(location.search).get(SearchParams.LIST)?.split(",") ??
-    [];
+  const [open, setOpen] = useState(initialOpen);
+
+  useEffect(() => {
+    setOpen(initialOpen);
+  }, [initialOpen, validations]);
+
   return (
-    <div
-      className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
+    <div className="mb-14">
+      <button
+        className={`flex items-center w-full text-left select-none duration-300`}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <div
+          className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
+        >
+          {open ? "▼" : "▶"}
+        </div>
+        <div className="flex justify-between w-full">
+          <h4 className="text-3xl ">Tx Validations - {era}</h4>
+        </div>
+      </button>
+      {open && (
+        <div
+          className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
         accordion text-xl font-medium mt-10 overflow-hidden pb-1"
-    >
-      {validations
-        .filter((v) => shownValidations.includes(v.name))
-        .map((v) => (
-          <AccordionItem key={v.name} validation={v} />
-        ))}
+        >
+          {validations
+            .filter((v) => v.shown)
+            .map((v) => (
+              <AccordionItem key={v.name} validation={v} />
+            ))}
+        </div>
+      )}
     </div>
   );
 }

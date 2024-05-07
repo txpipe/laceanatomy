@@ -1,15 +1,22 @@
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Button } from "~/components/Button";
-import { IProtocolParam, TabNames, TabType } from "~/interfaces";
+import { IProtocolParam, IUiConfigs, TabNames, TabType } from "~/interfaces";
 import { ContextTab } from "./ContextTab";
 import { UITab } from "./UITab";
 
 interface ConfigsModalProps {
   closeModal: () => void;
   latestParams: IProtocolParam[] | undefined;
+  uiConfigs: IUiConfigs;
+  setUiConfigs: Dispatch<SetStateAction<IUiConfigs>>;
 }
 
-export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
+export function ConfigsModal({
+  closeModal,
+  latestParams,
+  uiConfigs,
+  setUiConfigs,
+}: ConfigsModalProps) {
   const tabs: TabType[] = [TabNames.Context, TabNames.UI_Options];
   const [selected, setSelected] = useState<TabType>(TabNames.Context);
 
@@ -31,7 +38,7 @@ export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
 
   return (
     <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-70" />
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-90" />
       <div className="relative flex min-h-screen items-center justify-center p-4">
         <div className="relative w-3/4 text-center ring-2 ring-inset ring-black text-black bg-white shadow-small rounded-xl p-8">
           <h3 className="text-4xl">Tx Validation Configurations</h3>
@@ -71,7 +78,7 @@ export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
                   selected == TabNames.UI_Options ? "block" : "hidden"
                 }`}
               >
-                <UITab />
+                <UITab uiConfigs={uiConfigs} setUiConfigs={setUiConfigs} />
               </div>
             </div>
           </div>

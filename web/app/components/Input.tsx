@@ -25,7 +25,7 @@ export const Input = ({
   if (isCheckbox) {
     return (
       <div className="w-full text-left flex justify-between p-2">
-        <label htmlFor={id} className="text-xl select-none">
+        <label htmlFor={id} className="text-xl select-none cursor-pointer">
           {label}
         </label>
         <div className="relative inline-block w-10 mr-4 align-top select-none">

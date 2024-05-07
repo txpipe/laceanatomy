@@ -1,11 +1,5 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
-import {
-  Form,
-  useActionData,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
-import { Validation } from "napi-pallas";
+import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { useContext, useEffect, useState } from "react";
 import { Button, ConfigsModal, Input, RootSection } from "~/components";
 import { ValidationsContext } from "~/contexts/validations.context";
@@ -14,12 +8,13 @@ import {
   EraType,
   Eras,
   IProtocolParam,
+  IUiConfigs,
   Networks,
 } from "~/interfaces";
 import * as server from "~/routes/tx.server";
 import TOPICS from "~/routes/tx.topics";
 import {
-  SearchParams,
+  BabbageValidations,
   exampleCbor,
   formDataToContext,
   initialProtPps,
@@ -99,47 +94,35 @@ export function ExampleCard(props: { title: string; address: string }) {
 export default function Index() {
   const initData = useActionData<typeof action>();
   const latestParams = useLoaderData<typeof loader>();
-  const {
-    setValidations,
-    context,
-    validations: contextValidations,
-  } = useContext(ValidationsContext);
+  const { context, setValidations } = useContext(ValidationsContext);
   const [data, setData] = useState<DataProps | undefined>(undefined);
   const [params, setParams] = useState<IProtocolParam[] | undefined>(undefined);
-  const [rawCbor, setRawCor] = useState("");
+  const [rawCbor, setRawCor] = useState<string | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
+  const [uiConfigs, setUiConfigs] = useState<IUiConfigs>({
+    alwaysOpen: false,
+    beginning: true,
+    validationsToSee: BabbageValidations,
+  });
   const handleModal = () => setModalOpen((prev) => !prev);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (initData) {
-      const newSearchParams = new URLSearchParams(location.search);
-      const parsedInitData = JSON.parse(JSON.stringify(initData));
+      const parsedInitData: DataProps = JSON.parse(JSON.stringify(initData));
       setData(parsedInitData);
+      setRawCor(parsedInitData.raw);
       if (parsedInitData.validations) {
-        setValidations(parsedInitData.validations);
-        if (!newSearchParams.get(SearchParams.LIST))
-          newSearchParams.set(
-            SearchParams.LIST,
-            contextValidations.map((v) => v.name).join(",")
-          );
-        // When era is changed, every validation is shown
-        if (parsedInitData.era !== context.selectedEra) {
-          newSearchParams.delete(SearchParams.LIST);
-          newSearchParams.set(
-            SearchParams.LIST,
-            parsedInitData.validations.map((v: Validation) => v.name).join(",")
-          );
-        }
+        setValidations(
+          parsedInitData.validations.map((v) => ({
+            ...v,
+            shown: uiConfigs.validationsToSee.includes(v.name),
+          }))
+        );
         // When the example is used
-        if (rawCbor === "") setRawCor(exampleCbor);
-        if (!newSearchParams.get(SearchParams.OPEN))
-          newSearchParams.set(SearchParams.OPEN, "false");
-        if (!newSearchParams.get(SearchParams.BEGINNING))
-          newSearchParams.set(SearchParams.BEGINNING, "true");
+        if (!rawCbor) {
+          setRawCor(exampleCbor);
+        }
       }
-      navigate(`?${newSearchParams.toString()}`, { replace: false });
     }
     if (latestParams) {
       const parsedParams = JSON.parse(JSON.stringify(latestParams));
@@ -164,12 +147,7 @@ export default function Index() {
         inspect its contents.
       </p>
       <div className="block mt-8">
-        <Form
-          method="POST"
-          onSubmit={() => {
-            setModalOpen(false);
-          }}
-        >
+        <Form method="POST" onSubmit={() => setModalOpen(false)}>
           <Input
             type="text"
             autoComplete="off"
@@ -187,7 +165,12 @@ export default function Index() {
               <img alt="" src={SettingsIcon} /> Configs
             </Button>
             <div className={`${modalOpen ? "block" : "hidden"}`}>
-              <ConfigsModal closeModal={handleModal} latestParams={params} />
+              <ConfigsModal
+                closeModal={handleModal}
+                latestParams={params}
+                uiConfigs={uiConfigs}
+                setUiConfigs={setUiConfigs}
+              />
             </div>
             <Button type="submit">Dissect</Button>
           </div>
@@ -205,7 +188,14 @@ export default function Index() {
         </>
       )}
 
-      {data && <RootSection data={data} topics={TOPICS} era={era} />}
+      {data && (
+        <RootSection
+          data={data}
+          topics={TOPICS}
+          era={era}
+          uiConfigs={uiConfigs}
+        />
+      )}
     </main>
   );
 }

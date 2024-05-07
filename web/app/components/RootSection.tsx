@@ -1,9 +1,7 @@
-import { useLocation } from "@remix-run/react";
 import { Section } from "napi-pallas";
-import { useState } from "react";
-import { EraType } from "~/interfaces";
+import { EraType, IUiConfigs } from "~/interfaces";
 import { ExampleCard } from "~/routes/tx";
-import { SearchParams, exampleCbor, getTopicMeta } from "~/utils";
+import { exampleCbor, getTopicMeta } from "~/utils";
 import { HexBlock, PropBlock, TopicMeta } from "./constructors";
 import { DataSection, ValidationInformation } from "./index";
 
@@ -11,13 +9,9 @@ export function RootSection(props: {
   data: Section;
   topics: Record<string, TopicMeta>;
   era: EraType;
+  uiConfigs: IUiConfigs;
 }) {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const initialOpen = searchParams.get(SearchParams.OPEN) === "true";
-  const goesBeginning = searchParams.get(SearchParams.BEGINNING) === "true";
-  const [open, setOpen] = useState<boolean>(initialOpen);
-  const handleClick = () => setOpen(!open);
+  const goesBeginning = props.uiConfigs.beginning;
   const topic = getTopicMeta(props.data.topic, props.topics);
 
   if (props.data.error)
@@ -39,22 +33,10 @@ export function RootSection(props: {
   return (
     <div className="flex flex-col">
       {goesBeginning && (
-        <div className="mb-14">
-          <button
-            className={`flex items-center w-full text-left select-none duration-300`}
-            onClick={handleClick}
-          >
-            <div
-              className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
-            >
-              {open ?? initialOpen ? "▼" : "▶"}
-            </div>
-            <div className="flex justify-between w-full">
-              <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
-            </div>
-          </button>
-          {open && <ValidationInformation />}
-        </div>
+        <ValidationInformation
+          era={props.era}
+          initialOpen={props.uiConfigs.alwaysOpen}
+        />
       )}
       <h4 className="text-3xl">{topic.title}</h4>
       {!!props.data.bytes && (
@@ -67,22 +49,10 @@ export function RootSection(props: {
         <DataSection key={c.identity} data={c} topics={props.topics} />
       ))}
       {!goesBeginning && (
-        <div className="mb-14">
-          <button
-            className={`flex items-center w-full text-left select-none duration-300`}
-            onClick={handleClick}
-          >
-            <div
-              className={`h-8 w-8 inline-flex items-center justify-center duration-300 `}
-            >
-              {open ?? initialOpen ? "▼" : "▶"}
-            </div>
-            <div className="flex justify-between w-full">
-              <h4 className="text-3xl ">Tx Validations - {props.era}</h4>
-            </div>
-          </button>
-          {open && <ValidationInformation />}
-        </div>
+        <ValidationInformation
+          era={props.era}
+          initialOpen={props.uiConfigs.alwaysOpen}
+        />
       )}
     </div>
   );
