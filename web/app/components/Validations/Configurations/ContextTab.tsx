@@ -75,7 +75,6 @@ export const ContextTab = ({
           {networks.map((net) => (
             <Button
               key={net}
-              type="button"
               onClick={changeNetwork(net as NetworkType)}
               color="pink"
               className={`${
@@ -100,7 +99,6 @@ export const ContextTab = ({
           {eras.map((era) => (
             <Button
               key={era}
-              type="button"
               onClick={changeEra(era as EraType)}
               color="pink"
               className={`
@@ -129,7 +127,7 @@ export const ContextTab = ({
       <div className="flex items-center justify-between">
         <div className="text-left text-3xl mb-3">Protocol Parameters</div>
 
-        <Button type="button" onClick={setLatestParams}>
+        <Button onClick={setLatestParams}>
           Get latest Protocol Parameters
         </Button>
       </div>

@@ -1,13 +1,13 @@
 import { ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  type: "submit" | "button";
+  type?: "submit" | "button";
   className?: string;
   color?: "blue" | "pink";
 }
 
 export const Button = ({
-  type,
+  type = "button",
   children,
   className: customClassName,
   color = "blue",

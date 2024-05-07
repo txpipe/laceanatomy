@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "@remix-run/react";
 import { useContext } from "react";
+import { Input } from "~/components/Input";
 import { ValidationsContext } from "~/contexts/validations.context";
 import { SearchParams } from "~/utils";
 
@@ -51,37 +52,14 @@ export const UITab = () => {
       <div className="text-left text-3xl mb-3">Select validations to show</div>
       {validations.map((validation, index, arr) => (
         <div key={validation.name}>
-          <div className="w-full text-left flex justify-between p-2">
-            <label htmlFor={validation.name} className="text-xl select-none">
-              {validation.name}
-            </label>
-            <div className="relative inline-block w-10 mr-4 align-top select-none ">
-              <div
-                className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
-                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
-                transition-all duration-400 ease-in-out ${
-                  shownValidations.includes(validation.name)
-                    ? "bg-green-200 "
-                    : "bg-red-200 "
-                }`}
-              >
-                <input
-                  id={validation.name}
-                  name={validation.name}
-                  defaultChecked={shownValidations.includes(validation.name)}
-                  type="checkbox"
-                  onChange={changeValidations(validation.name)}
-                  className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
-                  transition-all duration-400 ease-in-out bg-black
-                  ${
-                    shownValidations.includes(validation.name)
-                      ? "left-8"
-                      : "left-2"
-                  } `}
-                />
-              </div>
-            </div>
-          </div>
+          <Input
+            name={validation.name}
+            id={validation.name}
+            label={validation.name}
+            isCheckbox
+            checked={shownValidations.includes(validation.name)}
+            onChange={changeValidations(validation.name)}
+          />
           {index !== arr.length - 1 && <hr />}
         </div>
       ))}
@@ -89,54 +67,22 @@ export const UITab = () => {
       <div>
         <div className="text-left text-3xl mt-3">Others</div>
 
-        <div className="w-full text-left flex justify-between p-2">
-          <label htmlFor={"alwaysOpen"} className="text-xl">
-            Validations section always open
-          </label>
-          <div className="relative inline-block w-10 mr-4 align-top select-none ">
-            <div
-              className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
-                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
-                transition-all duration-400 ease-in-out ${
-                  initialOpen ? "bg-green-200 " : "bg-red-200 "
-                }`}
-            >
-              <input
-                id={"alwaysOpen"}
-                checked={initialOpen}
-                type="checkbox"
-                onChange={changeQuery(SearchParams.OPEN)}
-                className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
-                  transition-all duration-400 ease-in-out bg-black
-                  ${initialOpen ? "left-8 " : "left-2"} `}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="w-full text-left flex justify-between p-2">
-          <label htmlFor={"beginning"} className="text-xl">
-            Validations section at the beginning
-          </label>
-          <div className="relative inline-block w-10 mr-4 align-top select-none ">
-            <div
-              className={`toggle-label flex items-center overflow-hidden h-7 rounded-full cursor-pointer 
-                border-2 border-black  rounded-b-full border-b-4 px-6 shadow-black shadow-small
-                transition-all duration-400 ease-in-out ${
-                  beginning ? "bg-green-200 " : "bg-red-200 "
-                }`}
-            >
-              <input
-                id={"beginning"}
-                checked={beginning}
-                type="checkbox"
-                onChange={changeQuery(SearchParams.BEGINNING)}
-                className={`toggle-checkbox absolute block w-3 h-3 rounded-full  appearance-none cursor-pointer 
-                  transition-all duration-400 ease-in-out bg-black
-                  ${beginning ? "left-8 " : "left-2"} `}
-              />
-            </div>
-          </div>
-        </div>
+        <Input
+          name={"alwaysOpen"}
+          id={"alwaysOpen"}
+          label={"Validations section always open"}
+          isCheckbox
+          checked={initialOpen}
+          onChange={changeQuery(SearchParams.OPEN)}
+        />
+        <Input
+          name={"beginning"}
+          id={"beginning"}
+          label={"Show at beginning"}
+          isCheckbox
+          checked={beginning}
+          onChange={changeQuery(SearchParams.BEGINNING)}
+        />
       </div>
     </div>
   );

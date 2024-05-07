@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "~/components/Button";
-import { IProtocolParam } from "~/interfaces";
-import { Tabs } from "./Tabs";
+import { IProtocolParam, TabNames, TabType } from "~/interfaces";
+import { ContextTab } from "./ContextTab";
+import { UITab } from "./UITab";
 
 interface ConfigsModalProps {
   closeModal: () => void;
@@ -9,6 +10,11 @@ interface ConfigsModalProps {
 }
 
 export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
+  const tabs: TabType[] = [TabNames.Context, TabNames.UI_Options];
+  const [selected, setSelected] = useState<TabType>(TabNames.Context);
+
+  const changeSelected = (tab: TabType) => () => setSelected(tab);
+
   // To close config modal on esc press
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -35,10 +41,42 @@ export function ConfigsModal({ closeModal, latestParams }: ConfigsModalProps) {
           >
             +
           </button>
-          <Tabs latestParams={latestParams} />
+          <div className="flex flex-col mt-5 justify-center">
+            <div className="flex gap-3 justify-center">
+              {tabs.map((tab) => (
+                <Button
+                  key={tab}
+                  onClick={changeSelected(tab as TabType)}
+                  className={`hover:text-black ${
+                    selected === tab
+                      ? "focus:bg-blue-400 bg-blue-400"
+                      : "bg-white hover:bg-blue-200"
+                  }`}
+                >
+                  {tab}
+                </Button>
+              ))}
+            </div>
+            <div className="mt-4 p-8 border-2 border-black rounded-2xl shadow">
+              <div
+                className={`${
+                  selected == TabNames.Context ? "block" : "hidden"
+                }`}
+              >
+                <ContextTab latestParams={latestParams} />
+              </div>
+
+              <div
+                className={`${
+                  selected == TabNames.UI_Options ? "block" : "hidden"
+                }`}
+              >
+                <UITab />
+              </div>
+            </div>
+          </div>
           <div className="flex gap-3 h-full justify-center">
             <Button
-              type="button"
               color="pink"
               className="hover:bg-pink-400 mt-3"
               onClick={closeModal}

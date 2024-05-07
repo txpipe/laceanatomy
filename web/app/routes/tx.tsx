@@ -23,6 +23,7 @@ import {
   exampleCbor,
   formDataToContext,
   initialProtPps,
+  logCuriosity,
   paramsParser,
 } from "~/utils";
 import SettingsIcon from "../../public/settings.svg";
@@ -151,7 +152,7 @@ export default function Index() {
     }
   }, [initData, context.selectedNetwork]);
 
-  // if (data) logCuriosity(data);
+  if (data) logCuriosity(data);
 
   const era: EraType = data?.era || Eras.Babbage;
 
@@ -179,7 +180,6 @@ export default function Index() {
           />
           <div className="flex flex-row justify-end mt-4 gap-3">
             <Button
-              type="button"
               onClick={handleModal}
               color="pink"
               className="hover:bg-pink-400"
