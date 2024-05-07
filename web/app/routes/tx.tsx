@@ -17,7 +17,6 @@ import {
   BabbageValidations,
   exampleCbor,
   formDataToContext,
-  initialProtPps,
   logCuriosity,
   paramsParser,
 } from "~/utils";
@@ -62,19 +61,30 @@ export async function loader() {
   }
 }
 
-export function ExampleCard(props: { title: string; address: string }) {
+export function ExampleCard() {
+  const { context } = useContext(ValidationsContext);
   return (
     <Form method="POST" replace={false}>
       <button
         type="submit"
         className="border-2 rounded-lg p-4 shadow bg-gray-100 cursor-pointer flex flex-col w-full h-full text-left"
       >
-        <h3 className="text-xl">{props.title}</h3>
-        <input type="hidden" readOnly value={props.address} name="raw" />
-        <input readOnly value="Mainnet" name="Network" className="hidden" />
-        <input readOnly value="Babbage" name="Era" className="hidden" />
+        <h3 className="text-xl">Example Babbage Tx</h3>
+        <input type="hidden" readOnly value={exampleCbor} name="raw" />
+        <input
+          readOnly
+          value={context.selectedNetwork}
+          name="Network"
+          className="hidden"
+        />
+        <input
+          readOnly
+          value={context.selectedEra}
+          name="Era"
+          className="hidden"
+        />
         <input name="Block_slot" readOnly value={72316896} className="hidden" />
-        {initialProtPps.map((param) => (
+        {context.pptParams.map((param) => (
           <input
             key={param.name}
             readOnly
@@ -84,7 +94,7 @@ export function ExampleCard(props: { title: string; address: string }) {
           />
         ))}
         <code className="w-full break-words block mt-4 text-gray-400">
-          {props.address.substring(0, 30)}...
+          {exampleCbor.substring(0, 30)}...
         </code>
       </button>
     </Form>
@@ -183,7 +193,7 @@ export default function Index() {
             Or try one of these examples...
           </h2>
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ExampleCard title="Babbage Tx" address={exampleCbor} />
+            <ExampleCard />
           </div>
         </>
       )}
