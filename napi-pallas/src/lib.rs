@@ -237,7 +237,7 @@ pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidati
 
 #[tokio::main]
 #[napi]
-pub async fn get_latest_params(network: String) -> ProtocolParams {
+pub async fn get_latest_parameters(network: String) -> ProtocolParams {
   match tx::get_epochs_latest_parameters(network).await {
     Ok(params) => params,
     Err(_) => ProtocolParams::new(),

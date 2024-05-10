@@ -10,13 +10,13 @@ import {
   UIOptions,
 } from "~/utils";
 
-export const UITab = ({
+export function UITab({
   uiConfigs,
   setUiConfigs,
 }: {
   uiConfigs: IUiConfigs;
   setUiConfigs: Dispatch<SetStateAction<IUiConfigs>>;
-}) => {
+}) {
   const { context, validations: contextValidations } =
     useContext(ValidationsContext);
 
@@ -121,4 +121,4 @@ export const UITab = ({
       />
     </div>
   );
-};
+}

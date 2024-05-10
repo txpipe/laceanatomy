@@ -1,1 +1,1 @@
-export { getLatestParams, safeParseTx, type Section } from "napi-pallas";
+export { getLatestParameters, safeParseTx, type Section } from "napi-pallas";

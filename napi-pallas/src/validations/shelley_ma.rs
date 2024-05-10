@@ -167,7 +167,7 @@ fn validate_shelley_ma_witnesses(
   let res = check_witnesses(&tx_body, &tx_wits, &utxos);
   let description = set_description(
     &res,
-    " The owner of each transaction input signed the transaction.".to_string(),
+    "The owner of each transaction input signed the transaction.".to_string(),
   );
   return Validation::new()
     .with_name("Witnesses".to_string())

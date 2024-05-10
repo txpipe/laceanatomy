@@ -6,13 +6,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   color?: "blue" | "pink";
 }
 
-export const Button = ({
+export function Button({
   type = "button",
   children,
   className: customClassName,
   color = "blue",
   onClick: onClickFn,
-}: ButtonProps) => {
+}: ButtonProps) {
   return (
     <button
       onClick={onClickFn}
@@ -30,4 +30,4 @@ export const Button = ({
       {children}
     </button>
   );
-};
+}

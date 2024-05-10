@@ -8,7 +8,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   isCheckbox?: boolean;
 }
 
-export const Input = ({
+export function Input({
   name,
   disabled,
   id,
@@ -21,7 +21,7 @@ export const Input = ({
   label,
   isCheckbox = false,
   checked,
-}: InputProps) => {
+}: InputProps) {
   if (isCheckbox) {
     return (
       <div className="w-full text-left flex justify-between p-2">
@@ -69,4 +69,4 @@ export const Input = ({
       }`}
     />
   );
-};
+}

@@ -226,8 +226,11 @@ export const paramsParser = (
           .replace("Numerator", "");
 
         if (reducibleParams.includes(parsedKey)) {
-          const denominator =
-            newParams[`${parsedKey}Denominator` as keyof ProtocolParams];
+          let denominator = Number(
+            newParams[`${parsedKey}Denominator` as keyof ProtocolParams]
+          );
+          // If denominator is NaN, set it to 1
+          denominator = denominator === denominator ? denominator : 1;
           return {
             name: parsedKey.charAt(0).toUpperCase() + parsedKey.slice(1),
             value: Number(value) / denominator,
@@ -247,15 +250,9 @@ export const paramsParser = (
 
 export const ByronValidations = [
   "Non empty inputs",
-  "Network id",
-  "Minting policy",
-  "Well formedness",
-  "Auxiliary data",
-  "Minimum lovelace",
-  "Transaction execution units",
   "Transaction size",
-  "Validity interval",
-  "Output value size",
+  "Non empty outputs",
+  "Outputs have lovelace",
 ];
 export const ShelleyMAValidations = [
   "Transaction size",
@@ -269,15 +266,16 @@ export const ShelleyMAValidations = [
 ];
 export const AlonzoValidations = [
   "Non empty inputs",
-  "Network id",
-  "Minting policy",
-  "Well formedness",
+  "Network ID",
+  "Minting",
   "Auxiliary data",
   "Minimum lovelace",
-  "Transaction execution units",
   "Transaction size",
-  "Validity interval",
-  "Output value size",
+  "Script data hash",
+  "Transaction validity interval",
+  "Outputs value size",
+  "Execution units",
+  "Languages",
 ];
 export const BabbageValidations = [
   "Non empty inputs",

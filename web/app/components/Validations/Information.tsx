@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { ValidationsContext } from "~/contexts/validations.context";
-import { EraType, IValidation } from "~/interfaces";
+import { EraType, Eras, IValidation } from "~/interfaces";
 
 function AccordionItem({ validation }: { validation: IValidation }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +75,18 @@ export function ValidationInformation({
     setOpen(initialOpen);
   }, [initialOpen, validations]);
 
+  const validationsToShow =
+    era !== Eras.Conway
+      ? validations.filter((v) => v.shown)
+      : [
+          {
+            name: "Coming Soon",
+            value: true,
+            description: ". . .",
+            shown: true,
+          },
+        ];
+
   return (
     <div className="mb-14">
       <button
@@ -95,11 +107,9 @@ export function ValidationInformation({
           className="flex flex-col gap-3 relative w-full mx-auto lg:col-span-2
         accordion text-xl font-medium mt-10 overflow-hidden pb-1"
         >
-          {validations
-            .filter((v) => v.shown)
-            .map((v) => (
-              <AccordionItem key={v.name} validation={v} />
-            ))}
+          {validationsToShow.map((v) => (
+            <AccordionItem key={v.name} validation={v} />
+          ))}
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ import TOPICS from "./block.topics";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Cardano Block - Lovelace Anatomy" },
+    { title: "Cardano Block - Lace Anatomy" },
     { name: "description", content: "Lets dissect a Cardano block" },
   ];
 };

@@ -1,24 +1,54 @@
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useLoaderData } from "@remix-run/react";
+import {
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Button } from "~/components/Button";
-import { IProtocolParam, IUiConfigs, TabNames, TabType } from "~/interfaces";
+import { ValidationsContext } from "~/contexts/validations.context";
+import {
+  IProtocolParam,
+  IUiConfigs,
+  Networks,
+  TabNames,
+  TabType,
+} from "~/interfaces";
+import { loader } from "~/routes/tx";
+import { paramsParser } from "~/utils";
 import { ContextTab } from "./ContextTab";
 import { UITab } from "./UITab";
 
 interface ConfigsModalProps {
   closeModal: () => void;
-  latestParams: IProtocolParam[] | undefined;
   uiConfigs: IUiConfigs;
   setUiConfigs: Dispatch<SetStateAction<IUiConfigs>>;
 }
 
 export function ConfigsModal({
   closeModal,
-  latestParams,
   uiConfigs,
   setUiConfigs,
 }: ConfigsModalProps) {
+  const { context } = useContext(ValidationsContext);
+
   const tabs: TabType[] = [TabNames.Context, TabNames.UI_Options];
   const [selected, setSelected] = useState<TabType>(TabNames.Context);
+  const latestParams = useLoaderData<typeof loader>();
+  const [params, setParams] = useState<IProtocolParam[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (latestParams) {
+      const parsedParams = JSON.parse(JSON.stringify(latestParams));
+      if (context.selectedNetwork === Networks.Mainnet)
+        paramsParser(parsedParams.mainnetParams, setParams);
+      if (context.selectedNetwork === Networks.Preprod)
+        paramsParser(parsedParams.preprodParams, setParams);
+      if (context.selectedNetwork === Networks.Preview)
+        paramsParser(parsedParams.previewParams, setParams);
+    }
+  }, [context.selectedNetwork]);
 
   const changeSelected = (tab: TabType) => () => setSelected(tab);
 
@@ -45,6 +75,7 @@ export function ConfigsModal({
           <button
             className="absolute right-5 top-3 text-4xl cursor-pointer rotate-45 box-border"
             onClick={closeModal}
+            type="button"
           >
             +
           </button>
@@ -70,7 +101,7 @@ export function ConfigsModal({
                   selected == TabNames.Context ? "block" : "hidden"
                 }`}
               >
-                <ContextTab latestParams={latestParams} />
+                <ContextTab latestParams={params} />
               </div>
 
               <div

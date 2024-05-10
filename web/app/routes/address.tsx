@@ -7,7 +7,7 @@ import { parseAddress } from "./address.server";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Cardano Address - Lovelace Anatomy" },
+    { title: "Cardano Address - Lace Anatomy" },
     { name: "description", content: "Lets dissect a Cardano address" },
   ];
 };

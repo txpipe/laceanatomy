@@ -1,4 +1,7 @@
 use crate::{Validation, ValidationContext, Validations};
+use blockfrost::{BlockFrostSettings, BlockfrostAPI};
+use blockfrost_openapi::models::tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner;
+use dotenv::dotenv;
 use pallas::{
   applying::{
     babbage::{
@@ -253,7 +256,7 @@ fn validate_babbage_script_data_hash(
     "The Plutus scripts and native scripts of the transaction are valid.".to_string(),
   );
   return Validation::new()
-    .with_name("Languages".to_string())
+    .with_name("Script data hash".to_string())
     .with_value(res.is_ok())
     .with_description(description);
 }
@@ -285,6 +288,40 @@ fn validate_babbage_network_id(mtx: &BabbageMintedTx, network_id: u8) -> Validat
     .with_name("Network id".to_string())
     .with_value(res.is_ok())
     .with_description(description);
+}
+
+use std::env;
+
+pub async fn get_input_from_index(
+  hash: String,
+  network: String,
+  index: i32,
+) -> Option<TxContentUtxoOutputsInner> {
+  let settings = BlockFrostSettings::new();
+  dotenv().ok();
+  let mut project_id = env::var("MAINNET_PROJECT_ID").expect("MAINNET_PROJECT_ID must be set.");
+  if network == "Preprod" {
+    project_id = env::var("PREPROD_PROJECT_ID").expect("PREPROD_PROJECT_ID must be set.");
+  } else if network == "Preview" {
+    project_id = env::var("PREVIEW_PROJECT_ID").expect("PREVIEW_PROJECT_ID must be set.");
+  }
+
+  let api = BlockfrostAPI::new(&project_id, settings);
+  let tx = api.transactions_utxos(&hash).await;
+  print!("{:?}", tx);
+  match tx {
+    Ok(tx_) => {
+      let outputs = tx_.outputs;
+      outputs.iter().find_map(|output| {
+        if output.output_index == index {
+          Some(output.clone())
+        } else {
+          None
+        }
+      })
+    }
+    Err(_) => None,
+  }
 }
 
 pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> Validations {
@@ -372,6 +409,9 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
     block_slot: context.block_slot as u64,
     network_id: net_id,
   };
+
+  let inputs = mtx_b.transaction_body.inputs.clone();
+  let mut utxos: UTxOs = UTxOs::new();
 
   let out = Validations::new()
     .with_era(context.era.to_string())

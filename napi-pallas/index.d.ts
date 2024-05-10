@@ -85,7 +85,7 @@ export interface SectionValidation {
   validations: Validations
 }
 export function safeParseTx(raw: string, context: ValidationContext): SectionValidation
-export function getLatestParams(network: string): ProtocolParams
+export function getLatestParameters(network: string): ProtocolParams
 export interface Validation {
   name: string
   value: boolean

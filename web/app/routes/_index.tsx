@@ -1,17 +1,8 @@
-import {
-  ActionFunctionArgs,
-  json,
-  LoaderFunctionArgs,
-  redirect,
-  type MetaFunction,
-} from "@remix-run/node";
-import { parseAddress } from "./address.server";
-import { Form, Outlet, useActionData, useLoaderData } from "@remix-run/react";
-import { PropsWithChildren } from "react";
+import { redirect, type MetaFunction } from "@remix-run/node";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Lovelace Anatomy" },
+    { title: "Lace Anatomy" },
     { name: "description", content: "Lets dissect Cardano data" },
   ];
 };

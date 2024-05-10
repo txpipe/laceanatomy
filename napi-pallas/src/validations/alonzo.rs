@@ -118,7 +118,7 @@ fn validate_alonzo_output_val_size(mtx_a: &MintedTx, prot_pps: &AlonzoProtParams
     "The size of the value in each of the transaction outputs (regular outputs and collateral outputs) is not greater than the maximum allowed".to_string(),
   );
   return Validation::new()
-    .with_name("Minimum lovelace".to_string())
+    .with_name("Outputs value size".to_string())
     .with_value(res.is_ok())
     .with_description(description);
 }
@@ -127,10 +127,11 @@ fn validate_alonzo_tx_ex_units(mtx_a: &MintedTx, prot_pps: &AlonzoProtParams) ->
   let res = check_tx_ex_units(mtx_a, &prot_pps);
   let description = set_description(
     &res,
-    "The size of the value in each of the transaction outputs (regular outputs and collateral outputs) is not greater than the maximum allowed".to_string(),
+    "The number of execution units of the transaction should not exceed the maximum allowed"
+      .to_string(),
   );
   return Validation::new()
-    .with_name("Minimum lovelace".to_string())
+    .with_name("Execution units".to_string())
     .with_value(res.is_ok())
     .with_description(description);
 }
@@ -142,7 +143,7 @@ fn validate_alonzo_languages(mtx_a: &MintedTx, prot_pps: &AlonzoProtParams) -> V
     "The required script languages are included in the protocol parameters.".to_string(),
   );
   return Validation::new()
-    .with_name("Minimum lovelace".to_string())
+    .with_name("Languages".to_string())
     .with_value(res.is_ok())
     .with_description(description);
 }

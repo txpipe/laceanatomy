@@ -1,16 +1,9 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
-import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { Form, useActionData } from "@remix-run/react";
 import { useContext, useEffect, useState } from "react";
 import { Button, ConfigsModal, Input, RootSection } from "~/components";
 import { ValidationsContext } from "~/contexts/validations.context";
-import {
-  DataProps,
-  EraType,
-  Eras,
-  IProtocolParam,
-  IUiConfigs,
-  Networks,
-} from "~/interfaces";
+import { DataProps, EraType, Eras, IUiConfigs, Networks } from "~/interfaces";
 import * as server from "~/routes/tx.server";
 import TOPICS from "~/routes/tx.topics";
 import {
@@ -18,13 +11,12 @@ import {
   exampleCbor,
   formDataToContext,
   logCuriosity,
-  paramsParser,
 } from "~/utils";
 import SettingsIcon from "../../public/settings.svg";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Cardano Tx - Lovelace Anatomy" },
+    { title: "Cardano Tx - Lace Anatomy" },
     { name: "description", content: "Lets dissect a Cardano transaction" },
   ];
 };
@@ -52,9 +44,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export async function loader() {
   try {
-    const mainnetParams = server.getLatestParams(Networks.Mainnet);
-    const preprodParams = server.getLatestParams(Networks.Preprod);
-    const previewParams = server.getLatestParams(Networks.Preview);
+    const mainnetParams = server.getLatestParameters(Networks.Mainnet);
+    const preprodParams = server.getLatestParameters(Networks.Preprod);
+    const previewParams = server.getLatestParameters(Networks.Preview);
     return json({ mainnetParams, preprodParams, previewParams });
   } catch (error) {
     return json({ error: "Error fetching protocol parameters" });
@@ -103,10 +95,8 @@ export function ExampleCard() {
 
 export default function Index() {
   const initData = useActionData<typeof action>();
-  const latestParams = useLoaderData<typeof loader>();
-  const { context, setValidations } = useContext(ValidationsContext);
+  const { setValidations } = useContext(ValidationsContext);
   const [data, setData] = useState<DataProps | undefined>(undefined);
-  const [params, setParams] = useState<IProtocolParam[] | undefined>(undefined);
   const [rawCbor, setRawCor] = useState<string | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [uiConfigs, setUiConfigs] = useState<IUiConfigs>({
@@ -134,16 +124,7 @@ export default function Index() {
         }
       }
     }
-    if (latestParams) {
-      const parsedParams = JSON.parse(JSON.stringify(latestParams));
-      if (context.selectedNetwork === Networks.Mainnet)
-        paramsParser(parsedParams.mainnetParams, setParams);
-      if (context.selectedNetwork === Networks.Preprod)
-        paramsParser(parsedParams.preprodParams, setParams);
-      if (context.selectedNetwork === Networks.Preview)
-        paramsParser(parsedParams.previewParams, setParams);
-    }
-  }, [initData, context.selectedNetwork]);
+  }, [initData]);
 
   if (data) logCuriosity(data);
 
@@ -177,7 +158,6 @@ export default function Index() {
             <div className={`${modalOpen ? "block" : "hidden"}`}>
               <ConfigsModal
                 closeModal={handleModal}
-                latestParams={params}
                 uiConfigs={uiConfigs}
                 setUiConfigs={setUiConfigs}
               />

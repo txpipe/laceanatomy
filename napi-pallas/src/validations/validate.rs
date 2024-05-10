@@ -30,7 +30,7 @@ pub fn validate(mtx: &MultiEraTx<'_>, context: ValidationContext) -> Validations
     }
     MultiEraTx::AlonzoCompatible(mtx_a, Era::Alonzo) => validate_alonzo(&mtx_a, context),
     MultiEraTx::Babbage(mtx_b) => validate_babbage(&mtx_b, context),
-    MultiEraTx::Conway(mtx_c) => validate_conway(&mtx_c),
+    MultiEraTx::Conway(_) => validate_conway(),
     // This case is impossible. TODO: Handle error
     _ => Validations::new(),
   }
