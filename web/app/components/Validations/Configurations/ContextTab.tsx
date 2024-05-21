@@ -156,12 +156,13 @@ export function ContextTab({
                 disabled={isByron}
                 value={Number(param.value).toString() ?? 0}
                 onChange={changeParam(index)}
-                className={`block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
-            ${
-              isByron
-                ? "bg-slate-300 cursor-not-allowed"
-                : "focus:bg-pink-200 hover:bg-pink-200"
-            }`}
+                className={`block w-full px-4 py-2 mt-1 border-2 bg-white border-black h-16 shadow shadow-black 
+                rounded-lg rounded-b-xl border-b-8 appearance-none text-black placeholder-gray-400 text-2xl outline-none
+                ${
+                  isByron
+                    ? "bg-slate-300 cursor-not-allowed"
+                    : "focus:bg-pink-200 hover:bg-pink-200"
+                }`}
                 inputSize="small"
               />
             </div>

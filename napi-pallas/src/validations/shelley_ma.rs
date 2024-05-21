@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use pallas::{
   applying::{
     shelley_ma::{
@@ -8,18 +10,20 @@ use pallas::{
     utils::{get_alonzo_comp_tx_size, ShelleyProtParams},
     Environment, MultiEraProtocolParameters, UTxOs,
   },
+  codec::utils::{Bytes, KeyValuePairs},
+  crypto::hash::Hash,
   ledger::{
     primitives::{
-      alonzo::{MintedTx, MintedWitnessSet, TransactionBody},
+      alonzo::{MintedTx, MintedWitnessSet, TransactionBody, Value},
       conway::{NonceVariant, RationalNumber},
     },
-    traverse::{update::Nonce, Era},
+    traverse::{update::Nonce, Era, OriginalHash},
   },
 };
 
-use crate::{Validation, ValidationContext, Validations};
+use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
 
-use super::validate::set_description;
+use super::{alonzo::mk_utxo_for_alonzo_compatible_tx, validate::set_description};
 
 // & The following validation requires the size and the protocol parameters
 fn validate_shelley_ma_tx_size(size: &Option<u32>, prot_pps: &ShelleyProtParams) -> Validation {
@@ -203,8 +207,8 @@ fn validate_shelley_ma_network_id(mtx_sma: &MintedTx, network_id: &u8) -> Valida
     .with_description(description);
 }
 
-pub fn validate_shelley_ma(
-  mtx_sma: &MintedTx,
+pub async fn validate_shelley_ma(
+  mtx_sma: &MintedTx<'_>,
   era: &Era,
   context: ValidationContext,
 ) -> Validations {
@@ -267,6 +271,73 @@ pub fn validate_shelley_ma(
     block_slot: context.block_slot as u64,
     network_id: net_id,
   };
+
+  let inputs = get_inputs(
+    mtx_sma.transaction_body.original_hash().to_string(),
+    context.network.clone(),
+  )
+  .await;
+  let mut tx_outs_info = vec![];
+  inputs.iter().for_each(|tx_in| {
+    let address = &tx_in.address;
+    let mut lovelace_am = 0;
+    let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
+    for amt in &tx_in.amount {
+      match amt.quantity.parse::<u64>() {
+        Ok(a) => {
+          if amt.unit == "lovelace" {
+            lovelace_am += a
+          } else {
+            let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
+              Ok(hash) => hash,
+              Err(_) => Hash::new([0; 28]),
+            };
+            let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
+            if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
+              // If found, append (asset name, amount) to assets
+              policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
+            } else {
+              // If not found, add a new tuple (policy, (asset name, amount)) to assets
+              assets.push((
+                policy,
+                vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
+              ));
+            }
+          }
+        }
+        Err(_) => {
+          // TODO: Handle error appropriately
+          continue; // Skip this iteration if parsing fails
+        }
+      }
+    }
+
+    let datum_opt = match &tx_in.data_hash {
+      Some(data_hash) => Some(hex::decode(data_hash).unwrap().as_slice().into()),
+      _ => None,
+    };
+    if assets.len() > 0 {
+      let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
+        .into_iter()
+        .map(|(hash, vec)| {
+          let kv_pairs = KeyValuePairs::from(Vec::from(vec));
+          (hash, kv_pairs)
+        })
+        .collect();
+      tx_outs_info.push((
+        address.clone(),
+        Value::Multiasset(
+          lovelace_am,
+          KeyValuePairs::from(Vec::from(transformed_assets)),
+        ),
+        datum_opt,
+      ));
+    } else {
+      tx_outs_info.push((address.clone(), Value::Coin(lovelace_am), datum_opt));
+    }
+  });
+  let utxos = mk_utxo_for_alonzo_compatible_tx(&mtx_sma.transaction_body, &tx_outs_info);
+
   let out = Validations::new()
     .with_era("Shelley Mary Allegra".to_string())
     .add_new_validation(validate_shelley_ma_tx_size(size, &prot_params))
@@ -276,6 +347,12 @@ pub fn validate_shelley_ma(
     .add_new_validation(validate_shelley_ma_min_lovelace(&mtx_sma, &prot_params))
     .add_new_validation(validate_shelley_ma_fees(&mtx_sma, &size, &prot_params))
     .add_new_validation(validate_shelley_ma_ttl(&mtx_sma, &env.block_slot))
-    .add_new_validation(validate_shelley_ma_network_id(&mtx_sma, &env.network_id));
+    .add_new_validation(validate_shelley_ma_network_id(&mtx_sma, &env.network_id))
+    .add_new_validation(validate_shelley_ma_ins_in_utxos(&mtx_sma, &utxos))
+    .add_new_validation(validate_shelley_ma_preservation_of_value(
+      &mtx_sma, &utxos, era,
+    ))
+    .add_new_validation(validate_shelley_ma_witnesses(&mtx_sma, &tx_wits, &utxos));
+
   out
 }

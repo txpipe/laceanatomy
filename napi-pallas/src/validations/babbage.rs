@@ -1,7 +1,4 @@
-use crate::{Validation, ValidationContext, Validations};
-use blockfrost::{BlockFrostSettings, BlockfrostAPI};
-use blockfrost_openapi::models::tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner;
-use dotenv::dotenv;
+use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
 use pallas::{
   applying::{
     babbage::{
@@ -13,15 +10,25 @@ use pallas::{
     utils::{get_babbage_tx_size, BabbageProtParams},
     Environment, MultiEraProtocolParameters, UTxOs,
   },
+  codec::{
+    minicbor::{Decode, Decoder},
+    utils::{Bytes, CborWrap, KeepRaw, KeyValuePairs},
+  },
+  crypto::hash::Hash,
   ledger::{
     primitives::{
       alonzo::ExUnitPrices,
-      babbage::{CostMdls, MintedTransactionBody, MintedTx as BabbageMintedTx},
-      conway::{Nonce, NonceVariant, RationalNumber},
+      babbage::{
+        CostMdls, MintedDatumOption, MintedPostAlonzoTransactionOutput, MintedScriptRef,
+        MintedTransactionBody, MintedTransactionOutput, MintedTx as BabbageMintedTx,
+        PseudoTransactionOutput, Value,
+      },
+      conway::{Nonce, NonceVariant, PlutusV2Script, RationalNumber},
     },
-    traverse::update::ExUnits,
+    traverse::{update::ExUnits, MultiEraInput, MultiEraOutput, OriginalHash},
   },
 };
+use std::{borrow::Cow, iter::zip, str::FromStr};
 
 use super::validate::set_description;
 
@@ -290,41 +297,40 @@ fn validate_babbage_network_id(mtx: &BabbageMintedTx, network_id: u8) -> Validat
     .with_description(description);
 }
 
-use std::env;
+pub fn mk_utxo_for_babbage_tx<'a>(
+  tx_body: &MintedTransactionBody,
+  tx_outs_info: &'a Vec<(
+    String, // address in string format
+    Value,
+    Option<MintedDatumOption>,
+    Option<CborWrap<MintedScriptRef>>,
+  )>,
+) -> UTxOs<'a> {
+  let mut utxos: UTxOs = UTxOs::new();
 
-pub async fn get_input_from_index(
-  hash: String,
-  network: String,
-  index: i32,
-) -> Option<TxContentUtxoOutputsInner> {
-  let settings = BlockFrostSettings::new();
-  dotenv().ok();
-  let mut project_id = env::var("MAINNET_PROJECT_ID").expect("MAINNET_PROJECT_ID must be set.");
-  if network == "Preprod" {
-    project_id = env::var("PREPROD_PROJECT_ID").expect("PREPROD_PROJECT_ID must be set.");
-  } else if network == "Preview" {
-    project_id = env::var("PREVIEW_PROJECT_ID").expect("PREVIEW_PROJECT_ID must be set.");
+  for (tx_in, (addr, val, datum_opt, script_ref)) in zip(tx_body.inputs.clone(), tx_outs_info) {
+    let multi_era_in = MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
+    let address_bytes = match hex::decode(hex::encode(addr)) {
+      Ok(bytes_vec) => Bytes::from(bytes_vec),
+      _ => return UTxOs::new(),
+    };
+    let tx_out: MintedTransactionOutput =
+      PseudoTransactionOutput::PostAlonzo(MintedPostAlonzoTransactionOutput {
+        address: address_bytes,
+        value: val.clone(),
+        datum_option: datum_opt.clone(),
+        script_ref: script_ref.clone(),
+      });
+    let multi_era_out: MultiEraOutput = MultiEraOutput::Babbage(Box::new(Cow::Owned(tx_out)));
+    utxos.insert(multi_era_in, multi_era_out);
   }
-
-  let api = BlockfrostAPI::new(&project_id, settings);
-  let tx = api.transactions_utxos(&hash).await;
-  print!("{:?}", tx);
-  match tx {
-    Ok(tx_) => {
-      let outputs = tx_.outputs;
-      outputs.iter().find_map(|output| {
-        if output.output_index == index {
-          Some(output.clone())
-        } else {
-          None
-        }
-      })
-    }
-    Err(_) => None,
-  }
+  utxos
 }
 
-pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> Validations {
+pub async fn validate_babbage(
+  mtx_b: &BabbageMintedTx<'_>,
+  context: ValidationContext,
+) -> Validations {
   let tx_body: &MintedTransactionBody = &mtx_b.transaction_body.clone();
   let ppt_params = context.protocol_params;
   let size: &Option<u32> = &get_babbage_tx_size(tx_body);
@@ -410,8 +416,91 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
     network_id: net_id,
   };
 
-  let inputs = mtx_b.transaction_body.inputs.clone();
-  let mut utxos: UTxOs = UTxOs::new();
+  let inputs = get_inputs(
+    mtx_b.transaction_body.original_hash().to_string(),
+    context.network.clone(),
+  )
+  .await;
+  let mut tx_outs_info = vec![];
+
+  inputs.iter().for_each(|tx_in| {
+    let address = &tx_in.address;
+    let mut lovelace_am = 0;
+    let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
+    for amt in &tx_in.amount {
+      match amt.quantity.parse::<u64>() {
+        Ok(a) => {
+          if amt.unit == "lovelace" {
+            lovelace_am += a
+          } else {
+            let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
+              Ok(hash) => hash,
+              Err(_) => Hash::new([0; 28]),
+            };
+            let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
+            if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
+              // If found, append (asset name, amount) to assets
+              policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
+            } else {
+              // If not found, add a new tuple (policy, (asset name, amount)) to assets
+              assets.push((
+                policy,
+                vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
+              ));
+            }
+          }
+        }
+        Err(_) => {
+          // TODO: Handle error appropriately
+          continue; // Skip this iteration if parsing fails
+        }
+      }
+    }
+
+    let datum_opt = match &tx_in.data_hash {
+      Some(data_hash) => Some(MintedDatumOption::Hash(
+        hex::decode(data_hash).unwrap().as_slice().into(),
+      )),
+      _ => match &tx_in.inline_datum {
+        // TODO: Fix so that the inline datum is properly parsed
+        Some(_) => None::<MintedDatumOption>,
+        _ => None::<MintedDatumOption>,
+      },
+    };
+    let script_ref = match &tx_in.reference_script_hash {
+      Some(script) => Some(CborWrap(MintedScriptRef::PlutusV2Script(PlutusV2Script(
+        Bytes::from(hex::decode(script).unwrap()),
+      )))),
+      _ => None::<CborWrap<MintedScriptRef>>,
+    };
+    if assets.len() > 0 {
+      let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
+        .into_iter()
+        .map(|(hash, vec)| {
+          let kv_pairs = KeyValuePairs::from(Vec::from(vec));
+          (hash, kv_pairs)
+        })
+        .collect();
+      tx_outs_info.push((
+        address.clone(),
+        Value::Multiasset(
+          lovelace_am,
+          KeyValuePairs::from(Vec::from(transformed_assets)),
+        ),
+        datum_opt,
+        script_ref,
+      ));
+    } else {
+      tx_outs_info.push((
+        address.clone(),
+        Value::Coin(lovelace_am),
+        datum_opt,
+        script_ref,
+      ));
+    }
+  });
+
+  let utxos = mk_utxo_for_babbage_tx(&mtx_b.transaction_body, &tx_outs_info);
 
   let out = Validations::new()
     .with_era(context.era.to_string())
@@ -423,10 +512,29 @@ pub fn validate_babbage(mtx_b: &BabbageMintedTx, context: ValidationContext) -> 
     .add_new_validation(validate_babbage_output_val_size(&mtx_b, &prot_params))
     .add_new_validation(validate_babbage_tx_ex_units(&mtx_b, &prot_params))
     .add_new_validation(validate_babbage_tx_size(&size, &prot_params))
+    .add_new_validation(validate_babbage_fee(&mtx_b, &size, &utxos, &prot_params))
+    .add_new_validation(validate_babbage_witness_set(&mtx_b, &utxos))
+    .add_new_validation(validate_babbage_all_ins_in_utxos(&mtx_b, &utxos))
+    .add_new_validation(validate_babbage_preservation_of_value(&mtx_b, &utxos))
+    .add_new_validation(validate_babbage_languages(
+      &mtx_b,
+      &utxos,
+      &magic,
+      &net_id,
+      env.block_slot,
+    ))
+    .add_new_validation(validate_babbage_script_data_hash(
+      &mtx_b,
+      &utxos,
+      &magic,
+      &net_id,
+      env.block_slot,
+    ))
     .add_new_validation(validate_babbage_tx_validity_interval(
       &mtx_b,
       env.block_slot,
     ))
     .add_new_validation(validate_babbage_network_id(&mtx_b, env.network_id));
+
   out
 }

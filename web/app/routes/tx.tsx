@@ -157,7 +157,7 @@ export default function Index() {
             </Button>
             <div className={`${modalOpen ? "block" : "hidden"}`}>
               <ConfigsModal
-                closeModal={handleModal}
+                closeModal={() => setModalOpen(false)}
                 uiConfigs={uiConfigs}
                 setUiConfigs={setUiConfigs}
               />

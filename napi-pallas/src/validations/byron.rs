@@ -1,4 +1,6 @@
-use crate::{Validation, Validations};
+use std::{borrow::Cow, iter::zip};
+
+use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
 use pallas::{
   applying::{
     byron::{
@@ -8,8 +10,14 @@ use pallas::{
     utils::ByronProtParams,
     UTxOs,
   },
-  codec::minicbor::encode,
-  ledger::primitives::byron::{MintedTxPayload, Tx},
+  codec::{
+    minicbor::{bytes::ByteVec, encode},
+    utils::TagWrap,
+  },
+  ledger::{
+    primitives::byron::{Address, MintedTxPayload, Tx, TxOut},
+    traverse::{MultiEraInput, MultiEraOutput, OriginalHash},
+  },
 };
 
 use super::validate::set_description;
@@ -120,7 +128,28 @@ fn validate_byron_fees(
     .with_description(description);
 }
 
-pub fn validate_byron(mtxp: &MintedTxPayload) -> Validations {
+pub fn mk_utxo_for_byron_tx<'a>(tx: &Tx, tx_outs_info: &[(String, u64)]) -> UTxOs<'a> {
+  let mut utxos: UTxOs = UTxOs::new();
+  for (tx_in, (address_payload, amount)) in zip(tx.inputs.clone().to_vec(), tx_outs_info) {
+    let input_tx_out_addr: Address = match hex::decode(hex::encode(address_payload)) {
+      Ok(addr_bytes) => Address {
+        payload: TagWrap(ByteVec::from(addr_bytes)),
+        crc: 3430631884,
+      },
+      _ => return UTxOs::new(),
+    };
+    let tx_out: TxOut = TxOut {
+      address: input_tx_out_addr,
+      amount: *amount,
+    };
+    let multi_era_in: MultiEraInput = MultiEraInput::Byron(Box::new(Cow::Owned(tx_in)));
+    let multi_era_out: MultiEraOutput = MultiEraOutput::Byron(Box::new(Cow::Owned(tx_out)));
+    utxos.insert(multi_era_in, multi_era_out);
+  }
+  utxos
+}
+
+pub async fn validate_byron(mtxp: &MintedTxPayload<'_>, context: ValidationContext) -> Validations {
   let tx: &Tx = &mtxp.transaction;
   let size: &u64 = &get_tx_size(&tx);
   let prot_pps: ByronProtParams = ByronProtParams {
@@ -141,11 +170,44 @@ pub fn validate_byron(mtxp: &MintedTxPayload) -> Validations {
     unlock_stake_epoch: 18446744073709551615,
   };
 
+  let inputs = get_inputs(
+    mtxp.transaction.original_hash().to_string(),
+    context.network.clone(),
+  )
+  .await;
+  let mut tx_outs_info = vec![];
+  inputs.iter().for_each(|tx_in| {
+    let address = &tx_in.address;
+    let mut lovelace_am = 0;
+    for amt in &tx_in.amount {
+      match amt.quantity.parse::<u64>() {
+        Ok(a) => lovelace_am += a,
+        Err(_) => {
+          // TODO: Handle error appropriately
+          continue; // Skip this iteration if parsing fails
+        }
+      }
+    }
+
+    tx_outs_info.push((address.clone(), lovelace_am));
+  });
+  let utxos = mk_utxo_for_byron_tx(&mtxp.transaction, &tx_outs_info);
+  let mut magic = 764824073; // For mainnet
+  if context.network == "Preprod" {
+    magic = 1;
+  } else if context.network == "Preview" {
+    magic = 2;
+  }
+
   let out = Validations::new()
     .with_era("Byron".to_string())
     .add_new_validation(validate_byron_size(&size, &prot_pps))
     .add_new_validation(validate_byron_ins_not_empty(&tx))
     .add_new_validation(validate_byron_outs_not_empty(&tx))
-    .add_new_validation(validate_byron_outs_have_lovelace(&tx));
+    .add_new_validation(validate_byron_outs_have_lovelace(&tx))
+    .add_new_validation(validate_byron_ins_in_utxos(&tx, &utxos))
+    .add_new_validation(validate_byron_witnesses(&mtxp, &utxos, magic))
+    .add_new_validation(validate_byron_fees(&tx, &size, &utxos, &prot_pps));
+
   out
 }

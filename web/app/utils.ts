@@ -201,13 +201,13 @@ export enum UIOptions {
 }
 
 const reducibleParams = [
-  "A0",
-  "Rho",
-  "Tau",
-  "DecentralisationParam",
-  "ExtraEntropy",
-  "PriceMem",
-  "PriceStep",
+  "a0",
+  "rho",
+  "tau",
+  "decentralisationParam",
+  "extraEntropy",
+  "priceMem",
+  "priceStep",
 ];
 
 export const paramsParser = (
@@ -223,8 +223,8 @@ export const paramsParser = (
           .split(/(?=[A-Z])/)
           .join(" ")
           .replace("Transaction", "Tx")
-          .replace("Numerator", "");
-
+          .replace("Numerator", "")
+          .trim();
         if (reducibleParams.includes(parsedKey)) {
           let denominator = Number(
             newParams[`${parsedKey}Denominator` as keyof ProtocolParams]
@@ -253,6 +253,9 @@ export const ByronValidations = [
   "Transaction size",
   "Non empty outputs",
   "Outputs have lovelace",
+  "Inputs in UTXOs",
+  "Witnesses",
+  "Fees",
 ];
 export const ShelleyMAValidations = [
   "Transaction size",
@@ -263,6 +266,9 @@ export const ShelleyMAValidations = [
   "Fees",
   "TTL",
   "Network id",
+  "Inputs in UTxOs",
+  "Preservation of value",
+  "Witnesses",
 ];
 export const AlonzoValidations = [
   "Non empty inputs",
@@ -276,6 +282,10 @@ export const AlonzoValidations = [
   "Outputs value size",
   "Execution units",
   "Languages",
+  "Inputs and collateral in UTxOs",
+  "Preservation of value",
+  "Witness set",
+  "Fee",
 ];
 export const BabbageValidations = [
   "Non empty inputs",
@@ -286,6 +296,12 @@ export const BabbageValidations = [
   "Output value size",
   "Transaction execution units",
   "Transaction size",
+  "Fee",
+  "Witness set",
+  "All inputs in UTxOs",
+  "Preservation of value",
+  "Languages",
+  "Script data hash",
   "Validity interval",
   "Network id",
 ];

@@ -159,7 +159,7 @@ impl Section {
     self
   }
 
-  fn build_child<F>(mut self, func: F) -> Self
+  fn build_child<F>(self, func: F) -> Self
   where
     F: FnOnce() -> Section,
   {
@@ -218,9 +218,10 @@ pub struct SectionValidation {
   pub validations: Validations,
 }
 
+#[tokio::main]
 #[napi]
-pub fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidation {
-  match tx::parse(raw, context) {
+pub async fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidation {
+  match tx::parse(raw, context).await {
     Ok(x) => {
       let (section, validations) = x;
       SectionValidation {

@@ -16,20 +16,20 @@ pub fn set_description(res: &Result<(), ValidationError>, success: String) -> St
   }
 }
 
-pub fn validate(mtx: &MultiEraTx<'_>, context: ValidationContext) -> Validations {
+pub async fn validate(mtx: &MultiEraTx<'_>, context: ValidationContext) -> Validations {
   match &mtx {
-    MultiEraTx::Byron(mtxp) => validate_byron(&mtxp),
+    MultiEraTx::Byron(mtxp) => validate_byron(&mtxp, context).await,
     MultiEraTx::AlonzoCompatible(mtx_sma, Era::Shelley) => {
-      validate_shelley_ma(&mtx_sma, &Era::Shelley, context)
+      validate_shelley_ma(&mtx_sma, &Era::Shelley, context).await
     }
     MultiEraTx::AlonzoCompatible(mtx_sma, Era::Allegra) => {
-      validate_shelley_ma(&mtx_sma, &Era::Allegra, context)
+      validate_shelley_ma(&mtx_sma, &Era::Allegra, context).await
     }
     MultiEraTx::AlonzoCompatible(mtx_sma, Era::Mary) => {
-      validate_shelley_ma(&mtx_sma, &Era::Mary, context)
+      validate_shelley_ma(&mtx_sma, &Era::Mary, context).await
     }
-    MultiEraTx::AlonzoCompatible(mtx_a, Era::Alonzo) => validate_alonzo(&mtx_a, context),
-    MultiEraTx::Babbage(mtx_b) => validate_babbage(&mtx_b, context),
+    MultiEraTx::AlonzoCompatible(mtx_a, Era::Alonzo) => validate_alonzo(&mtx_a, context).await,
+    MultiEraTx::Babbage(mtx_b) => validate_babbage(&mtx_b, context).await,
     MultiEraTx::Conway(_) => validate_conway(),
     // This case is impossible. TODO: Handle error
     _ => Validations::new(),
