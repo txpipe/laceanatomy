@@ -1,4 +1,8 @@
-use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
+use crate::{tx::get_input, ProtocolParams, Validation, ValidationContext, Validations};
+use blockfrost_openapi::models::{
+  tx_content_output_amount_inner::TxContentOutputAmountInner,
+  tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner,
+};
 use pallas::{
   applying::{
     babbage::{
@@ -11,11 +15,12 @@ use pallas::{
     Environment, MultiEraProtocolParameters, UTxOs,
   },
   codec::{
-    minicbor::{Decode, Decoder},
+    minicbor::decode,
     utils::{Bytes, CborWrap, KeepRaw, KeyValuePairs},
   },
   crypto::hash::Hash,
   ledger::{
+    addresses::Address,
     primitives::{
       alonzo::ExUnitPrices,
       babbage::{
@@ -23,9 +28,9 @@ use pallas::{
         MintedTransactionBody, MintedTransactionOutput, MintedTx as BabbageMintedTx,
         PseudoTransactionOutput, Value,
       },
-      conway::{Nonce, NonceVariant, PlutusV2Script, RationalNumber},
+      conway::{Nonce, NonceVariant, PlutusData, PlutusV2Script, RationalNumber},
     },
-    traverse::{update::ExUnits, MultiEraInput, MultiEraOutput, OriginalHash},
+    traverse::{update::ExUnits, MultiEraInput, MultiEraOutput},
   },
 };
 use std::{borrow::Cow, iter::zip, str::FromStr};
@@ -297,44 +302,8 @@ fn validate_babbage_network_id(mtx: &BabbageMintedTx, network_id: u8) -> Validat
     .with_description(description);
 }
 
-pub fn mk_utxo_for_babbage_tx<'a>(
-  tx_body: &MintedTransactionBody,
-  tx_outs_info: &'a Vec<(
-    String, // address in string format
-    Value,
-    Option<MintedDatumOption>,
-    Option<CborWrap<MintedScriptRef>>,
-  )>,
-) -> UTxOs<'a> {
-  let mut utxos: UTxOs = UTxOs::new();
-
-  for (tx_in, (addr, val, datum_opt, script_ref)) in zip(tx_body.inputs.clone(), tx_outs_info) {
-    let multi_era_in = MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
-    let address_bytes = match hex::decode(hex::encode(addr)) {
-      Ok(bytes_vec) => Bytes::from(bytes_vec),
-      _ => return UTxOs::new(),
-    };
-    let tx_out: MintedTransactionOutput =
-      PseudoTransactionOutput::PostAlonzo(MintedPostAlonzoTransactionOutput {
-        address: address_bytes,
-        value: val.clone(),
-        datum_option: datum_opt.clone(),
-        script_ref: script_ref.clone(),
-      });
-    let multi_era_out: MultiEraOutput = MultiEraOutput::Babbage(Box::new(Cow::Owned(tx_out)));
-    utxos.insert(multi_era_in, multi_era_out);
-  }
-  utxos
-}
-
-pub async fn validate_babbage(
-  mtx_b: &BabbageMintedTx<'_>,
-  context: ValidationContext,
-) -> Validations {
-  let tx_body: &MintedTransactionBody = &mtx_b.transaction_body.clone();
-  let ppt_params = context.protocol_params;
-  let size: &Option<u32> = &get_babbage_tx_size(tx_body);
-  let prot_params = BabbageProtParams {
+fn ppt_from_context(ppt_params: ProtocolParams) -> BabbageProtParams {
+  BabbageProtParams {
     minfee_a: ppt_params.min_fee_a,
     minfee_b: ppt_params.min_fee_b,
     max_block_body_size: ppt_params.max_block_size,
@@ -395,7 +364,135 @@ pub async fn validate_babbage(
     max_value_size: ppt_params.max_val_size,
     collateral_percentage: ppt_params.collateral_percent,
     max_collateral_inputs: ppt_params.max_collateral_inputs,
+  }
+}
+
+pub fn mk_utxo_for_babbage_tx<'a>(
+  tx_body: &MintedTransactionBody,
+  tx_outs_info: &'a Vec<(
+    String, // address in string format
+    Value,
+    Option<MintedDatumOption>,
+    Option<CborWrap<MintedScriptRef>>,
+  )>,
+) -> UTxOs<'a> {
+  let mut utxos: UTxOs = UTxOs::new();
+
+  for (tx_in, (addr, val, datum_opt, script_ref)) in zip(tx_body.inputs.clone(), tx_outs_info) {
+    let multi_era_in = MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
+    let address_bytes = match hex::decode(addr) {
+      Ok(bytes_vec) => Bytes::from(bytes_vec),
+      _ => return UTxOs::new(),
+    };
+    let tx_out: MintedTransactionOutput =
+      PseudoTransactionOutput::PostAlonzo(MintedPostAlonzoTransactionOutput {
+        address: address_bytes,
+        value: val.clone(),
+        datum_option: datum_opt.clone(),
+        script_ref: script_ref.clone(),
+      });
+    let multi_era_out: MultiEraOutput = MultiEraOutput::Babbage(Box::new(Cow::Owned(tx_out)));
+    utxos.insert(multi_era_in, multi_era_out);
+  }
+  utxos
+}
+
+fn from_amounts(amounts: &Vec<TxContentOutputAmountInner>) -> Value {
+  let mut lovelace_am = 0;
+  let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
+  for amt in amounts {
+    match amt.quantity.parse::<u64>() {
+      Ok(a) => {
+        if amt.unit == "lovelace" {
+          lovelace_am += a
+        } else {
+          let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
+            Ok(hash) => hash,
+            Err(_) => Hash::new([0; 28]),
+          };
+          let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
+          if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
+            // If found, append (asset name, amount) to assets
+            policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
+          } else {
+            // If not found, add a new tuple (policy, (asset name, amount)) to assets
+            assets.push((
+              policy,
+              vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
+            ));
+          }
+        }
+      }
+      Err(_) => continue,
+    }
+  }
+  if assets.len() > 0 {
+    let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
+      .into_iter()
+      .map(|(hash, vec)| {
+        let kv_pairs = KeyValuePairs::from(Vec::from(vec));
+        (hash, kv_pairs)
+      })
+      .collect();
+    Value::Multiasset(
+      lovelace_am,
+      KeyValuePairs::from(Vec::from(transformed_assets)),
+    )
+  } else {
+    Value::Coin(lovelace_am)
+  }
+}
+
+fn from_datum(tx_in: &TxContentUtxoOutputsInner) -> Option<MintedDatumOption> {
+  match &tx_in.inline_datum {
+    Some(inline_data) => {
+      // let data_bytes = hex::decode(inline_data).unwrap().as_slice();
+      // let data: KeepRaw<PlutusData> = decode(&data_bytes).unwrap();
+      // Some(MintedDatumOption::Data(CborWrap(data)))
+      None
+    }
+    _ => match &tx_in.data_hash {
+      Some(data_hash) => Some(MintedDatumOption::Hash(
+        hex::decode(data_hash).unwrap().as_slice().into(),
+      )),
+      _ => None::<MintedDatumOption>,
+    },
+  }
+}
+
+fn from_tx_in(
+  tx_in: &TxContentUtxoOutputsInner,
+) -> (
+  String, // address in string format
+  Value,
+  Option<MintedDatumOption>,
+  Option<CborWrap<MintedScriptRef>>,
+) {
+  let address = match Address::from_bech32(&tx_in.address) {
+    Ok(addr) => addr,
+    _ => return ("Address Not Found".to_string(), Value::Coin(0), None, None),
   };
+  let value = from_amounts(&tx_in.amount);
+
+  let datum_opt: Option<MintedDatumOption> = from_datum(&tx_in);
+
+  let script_ref = match &tx_in.reference_script_hash {
+    Some(script) => Some(CborWrap(MintedScriptRef::PlutusV2Script(PlutusV2Script(
+      Bytes::from(hex::decode(script).unwrap()),
+    )))),
+    _ => None::<CborWrap<MintedScriptRef>>,
+  };
+
+  (Address::to_hex(&address), value, datum_opt, script_ref)
+}
+
+pub async fn validate_babbage(
+  mtx_b: &BabbageMintedTx<'_>,
+  context: ValidationContext,
+) -> Validations {
+  let tx_body: &MintedTransactionBody = &mtx_b.transaction_body.clone();
+  let size: &Option<u32> = &get_babbage_tx_size(tx_body);
+  let prot_params = ppt_from_context(context.protocol_params);
 
   let mut magic = 764824073; // For mainnet
   if context.network == "Preprod" {
@@ -416,88 +513,20 @@ pub async fn validate_babbage(
     network_id: net_id,
   };
 
-  let inputs = get_inputs(
-    mtx_b.transaction_body.original_hash().to_string(),
-    context.network.clone(),
-  )
-  .await;
   let mut tx_outs_info = vec![];
-
+  let mut inputs = vec![];
+  for mtx_in in &mtx_b.transaction_body.inputs {
+    inputs.push(
+      get_input(
+        mtx_in.transaction_id.to_string(),
+        mtx_in.index as i32,
+        context.network.clone(),
+      )
+      .await,
+    );
+  }
   inputs.iter().for_each(|tx_in| {
-    let address = &tx_in.address;
-    let mut lovelace_am = 0;
-    let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
-    for amt in &tx_in.amount {
-      match amt.quantity.parse::<u64>() {
-        Ok(a) => {
-          if amt.unit == "lovelace" {
-            lovelace_am += a
-          } else {
-            let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
-              Ok(hash) => hash,
-              Err(_) => Hash::new([0; 28]),
-            };
-            let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
-            if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
-              // If found, append (asset name, amount) to assets
-              policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
-            } else {
-              // If not found, add a new tuple (policy, (asset name, amount)) to assets
-              assets.push((
-                policy,
-                vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
-              ));
-            }
-          }
-        }
-        Err(_) => {
-          // TODO: Handle error appropriately
-          continue; // Skip this iteration if parsing fails
-        }
-      }
-    }
-
-    let datum_opt = match &tx_in.data_hash {
-      Some(data_hash) => Some(MintedDatumOption::Hash(
-        hex::decode(data_hash).unwrap().as_slice().into(),
-      )),
-      _ => match &tx_in.inline_datum {
-        // TODO: Fix so that the inline datum is properly parsed
-        Some(_) => None::<MintedDatumOption>,
-        _ => None::<MintedDatumOption>,
-      },
-    };
-    let script_ref = match &tx_in.reference_script_hash {
-      Some(script) => Some(CborWrap(MintedScriptRef::PlutusV2Script(PlutusV2Script(
-        Bytes::from(hex::decode(script).unwrap()),
-      )))),
-      _ => None::<CborWrap<MintedScriptRef>>,
-    };
-    if assets.len() > 0 {
-      let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
-        .into_iter()
-        .map(|(hash, vec)| {
-          let kv_pairs = KeyValuePairs::from(Vec::from(vec));
-          (hash, kv_pairs)
-        })
-        .collect();
-      tx_outs_info.push((
-        address.clone(),
-        Value::Multiasset(
-          lovelace_am,
-          KeyValuePairs::from(Vec::from(transformed_assets)),
-        ),
-        datum_opt,
-        script_ref,
-      ));
-    } else {
-      tx_outs_info.push((
-        address.clone(),
-        Value::Coin(lovelace_am),
-        datum_opt,
-        script_ref,
-      ));
-    }
+    tx_outs_info.push(from_tx_in(&tx_in));
   });
 
   let utxos = mk_utxo_for_babbage_tx(&mtx_b.transaction_body, &tx_outs_info);

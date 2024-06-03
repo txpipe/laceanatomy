@@ -1,5 +1,9 @@
 use std::str::FromStr;
 
+use blockfrost_openapi::models::{
+  tx_content_output_amount_inner::TxContentOutputAmountInner,
+  tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner,
+};
 use pallas::{
   applying::{
     shelley_ma::{
@@ -13,15 +17,16 @@ use pallas::{
   codec::utils::{Bytes, KeyValuePairs},
   crypto::hash::Hash,
   ledger::{
+    addresses::Address,
     primitives::{
       alonzo::{MintedTx, MintedWitnessSet, TransactionBody, Value},
       conway::{NonceVariant, RationalNumber},
     },
-    traverse::{update::Nonce, Era, OriginalHash},
+    traverse::{update::Nonce, Era},
   },
 };
 
-use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
+use crate::{tx::get_input, ProtocolParams, Validation, ValidationContext, Validations};
 
 use super::{alonzo::mk_utxo_for_alonzo_compatible_tx, validate::set_description};
 
@@ -207,16 +212,8 @@ fn validate_shelley_ma_network_id(mtx_sma: &MintedTx, network_id: &u8) -> Valida
     .with_description(description);
 }
 
-pub async fn validate_shelley_ma(
-  mtx_sma: &MintedTx<'_>,
-  era: &Era,
-  context: ValidationContext,
-) -> Validations {
-  let tx_body: &TransactionBody = &mtx_sma.transaction_body;
-  let tx_wits: &MintedWitnessSet = &mtx_sma.transaction_witness_set;
-  let ppt_params = context.protocol_params;
-  let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
-  let prot_params = ShelleyProtParams {
+fn ppt_from_context(ppt_params: ProtocolParams) -> ShelleyProtParams {
+  ShelleyProtParams {
     minfee_a: ppt_params.min_fee_a,
     minfee_b: ppt_params.min_fee_b,
     max_block_body_size: ppt_params.max_block_size,
@@ -251,7 +248,78 @@ pub async fn validate_shelley_ma(
       ppt_params.protocol_major_ver as u64,
     ),
     min_utxo_value: ppt_params.min_utxo as u64,
+  }
+}
+
+fn from_amounts(amounts: &Vec<TxContentOutputAmountInner>) -> Value {
+  let mut lovelace_am = 0;
+  let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
+  for amt in amounts {
+    match amt.quantity.parse::<u64>() {
+      Ok(a) => {
+        if amt.unit == "lovelace" {
+          lovelace_am += a
+        } else {
+          let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
+            Ok(hash) => hash,
+            Err(_) => Hash::new([0; 28]),
+          };
+          let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
+          if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
+            // If found, append (asset name, amount) to assets
+            policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
+          } else {
+            // If not found, add a new tuple (policy, (asset name, amount)) to assets
+            assets.push((
+              policy,
+              vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
+            ));
+          }
+        }
+      }
+      Err(_) => {
+        // TODO: Handle error appropriately
+        continue; // Skip this iteration if parsing fails
+      }
+    }
+  }
+  if assets.len() > 0 {
+    let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
+      .into_iter()
+      .map(|(hash, vec)| {
+        let kv_pairs = KeyValuePairs::from(Vec::from(vec));
+        (hash, kv_pairs)
+      })
+      .collect();
+    Value::Multiasset(
+      lovelace_am,
+      KeyValuePairs::from(Vec::from(transformed_assets)),
+    )
+  } else {
+    Value::Coin(lovelace_am)
+  }
+}
+
+fn from_tx_in(tx_in: &TxContentUtxoOutputsInner) -> (String, Value, Option<Hash<32>>) {
+  let address = Address::from_bech32(&tx_in.address).unwrap();
+  let value = from_amounts(&tx_in.amount);
+
+  let datum_opt: Option<Hash<32>> = match &tx_in.data_hash {
+    Some(data_hash) => Some(hex::decode(data_hash).unwrap().as_slice().into()),
+    _ => None,
   };
+  (Address::to_hex(&address), value, datum_opt)
+}
+
+pub async fn validate_shelley_ma(
+  mtx_sma: &MintedTx<'_>,
+  era: &Era,
+  context: ValidationContext,
+) -> Validations {
+  let tx_body: &TransactionBody = &mtx_sma.transaction_body;
+  let tx_wits: &MintedWitnessSet = &mtx_sma.transaction_witness_set;
+  let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
+  let prot_params = ppt_from_context(context.protocol_params);
 
   let mut magic = 764824073; // For mainnet
   if context.network == "Preprod" {
@@ -272,70 +340,22 @@ pub async fn validate_shelley_ma(
     network_id: net_id,
   };
 
-  let inputs = get_inputs(
-    mtx_sma.transaction_body.original_hash().to_string(),
-    context.network.clone(),
-  )
-  .await;
+  let mut inputs = vec![];
+  for mtx_in in &mtx_sma.transaction_body.inputs {
+    inputs.push(
+      get_input(
+        mtx_in.transaction_id.to_string(),
+        mtx_in.index as i32,
+        context.network.clone(),
+      )
+      .await,
+    );
+  }
   let mut tx_outs_info = vec![];
   inputs.iter().for_each(|tx_in| {
-    let address = &tx_in.address;
-    let mut lovelace_am = 0;
-    let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
-    for amt in &tx_in.amount {
-      match amt.quantity.parse::<u64>() {
-        Ok(a) => {
-          if amt.unit == "lovelace" {
-            lovelace_am += a
-          } else {
-            let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
-              Ok(hash) => hash,
-              Err(_) => Hash::new([0; 28]),
-            };
-            let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
-            if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
-              // If found, append (asset name, amount) to assets
-              policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
-            } else {
-              // If not found, add a new tuple (policy, (asset name, amount)) to assets
-              assets.push((
-                policy,
-                vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
-              ));
-            }
-          }
-        }
-        Err(_) => {
-          // TODO: Handle error appropriately
-          continue; // Skip this iteration if parsing fails
-        }
-      }
-    }
-
-    let datum_opt = match &tx_in.data_hash {
-      Some(data_hash) => Some(hex::decode(data_hash).unwrap().as_slice().into()),
-      _ => None,
-    };
-    if assets.len() > 0 {
-      let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
-        .into_iter()
-        .map(|(hash, vec)| {
-          let kv_pairs = KeyValuePairs::from(Vec::from(vec));
-          (hash, kv_pairs)
-        })
-        .collect();
-      tx_outs_info.push((
-        address.clone(),
-        Value::Multiasset(
-          lovelace_am,
-          KeyValuePairs::from(Vec::from(transformed_assets)),
-        ),
-        datum_opt,
-      ));
-    } else {
-      tx_outs_info.push((address.clone(), Value::Coin(lovelace_am), datum_opt));
-    }
+    tx_outs_info.push(from_tx_in(&tx_in));
   });
+
   let utxos = mk_utxo_for_alonzo_compatible_tx(&mtx_sma.transaction_body, &tx_outs_info);
 
   let out = Validations::new()

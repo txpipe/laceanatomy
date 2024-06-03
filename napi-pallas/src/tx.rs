@@ -3,7 +3,7 @@ use crate::{ProtocolParams, Validations};
 
 use super::Section;
 use blockfrost::{BlockFrostSettings, BlockfrostAPI};
-use blockfrost_openapi::models::tx_content_utxo_inputs_inner::TxContentUtxoInputsInner;
+use blockfrost_openapi::models::tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner;
 use dotenv::dotenv;
 use num_rational::Rational64;
 use num_traits::FromPrimitive;
@@ -421,7 +421,7 @@ pub async fn get_epochs_latest_parameters(
   }
 }
 
-pub async fn get_inputs(hash: String, network: String) -> Vec<TxContentUtxoInputsInner> {
+pub async fn get_input(hash: String, index: i32, network: String) -> TxContentUtxoOutputsInner {
   let settings = BlockFrostSettings::new();
   dotenv().ok();
   let mut project_id = env::var("MAINNET_PROJECT_ID").expect("MAINNET_PROJECT_ID must be set.");
@@ -434,7 +434,11 @@ pub async fn get_inputs(hash: String, network: String) -> Vec<TxContentUtxoInput
   let api = BlockfrostAPI::new(&project_id, settings);
   let tx_content = api.transactions_utxos(&hash).await;
   match tx_content {
-    Ok(tx_) => tx_.inputs,
-    Err(_) => Vec::new(),
+    Ok(tx_) => tx_
+      .outputs
+      .into_iter()
+      .find(|x| x.output_index == index)
+      .unwrap(),
+    Err(_) => TxContentUtxoOutputsInner::default(),
   }
 }

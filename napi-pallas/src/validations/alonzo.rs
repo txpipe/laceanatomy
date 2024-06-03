@@ -1,5 +1,9 @@
 use std::{borrow::Cow, iter::zip, str::FromStr};
 
+use blockfrost_openapi::models::{
+  tx_content_output_amount_inner::TxContentOutputAmountInner,
+  tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner,
+};
 use pallas::{
   applying::{
     alonzo::{
@@ -14,15 +18,16 @@ use pallas::{
   codec::utils::Bytes,
   crypto::hash::Hash,
   ledger::{
+    addresses::Address,
     primitives::{
       alonzo::{ExUnitPrices, Language, MintedTx, TransactionBody, TransactionOutput, Value},
       conway::{ExUnits, Nonce, NonceVariant, RationalNumber},
     },
-    traverse::{MultiEraInput, MultiEraOutput, OriginalHash},
+    traverse::{MultiEraInput, MultiEraOutput},
   },
 };
 
-use crate::{tx::get_inputs, Validation, ValidationContext, Validations};
+use crate::{tx::get_input, ProtocolParams, Validation, ValidationContext, Validations};
 
 use super::validate::set_description;
 use pallas::codec::utils::KeyValuePairs;
@@ -241,37 +246,8 @@ fn validate_alonzo_fee(mtx_a: &MintedTx, utxos: &UTxOs, prot_pps: &AlonzoProtPar
   }
 }
 
-pub fn mk_utxo_for_alonzo_compatible_tx<'a>(
-  tx_body: &TransactionBody,
-  tx_outs_info: &Vec<(
-    String, // address in string format
-    Value,
-    Option<Hash<32>>,
-  )>,
-) -> UTxOs<'a> {
-  let mut utxos: UTxOs = UTxOs::new();
-  for (tx_in, (address, amount, datum_hash)) in zip(tx_body.inputs.clone(), tx_outs_info) {
-    let multi_era_in = MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
-    let address_bytes = match hex::decode(hex::encode(address)) {
-      Ok(bytes_vec) => Bytes::from(bytes_vec),
-      _ => return UTxOs::new(),
-    };
-    let tx_out = TransactionOutput {
-      address: address_bytes,
-      amount: amount.clone(),
-      datum_hash: *datum_hash,
-    };
-    let multi_era_out = MultiEraOutput::AlonzoCompatible(Box::new(Cow::Owned(tx_out)));
-    utxos.insert(multi_era_in, multi_era_out);
-  }
-  utxos
-}
-
-pub async fn validate_alonzo(mtx_a: &MintedTx<'_>, context: ValidationContext) -> Validations {
-  let tx_body: &TransactionBody = &mtx_a.transaction_body;
-  let ppt_params = context.protocol_params;
-  let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
-  let prot_params = AlonzoProtParams {
+fn ppt_from_context(ppt_params: ProtocolParams) -> AlonzoProtParams {
+  AlonzoProtParams {
     minfee_a: ppt_params.min_fee_a,
     minfee_b: ppt_params.min_fee_b,
     max_block_body_size: ppt_params.max_block_size,
@@ -329,7 +305,99 @@ pub async fn validate_alonzo(mtx_a: &MintedTx<'_>, context: ValidationContext) -
     max_value_size: ppt_params.max_val_size,
     collateral_percentage: ppt_params.collateral_percent,
     max_collateral_inputs: ppt_params.max_collateral_inputs,
+  }
+}
+
+pub fn mk_utxo_for_alonzo_compatible_tx<'a>(
+  tx_body: &TransactionBody,
+  tx_outs_info: &Vec<(
+    String, // address in string format
+    Value,
+    Option<Hash<32>>,
+  )>,
+) -> UTxOs<'a> {
+  let mut utxos: UTxOs = UTxOs::new();
+  for (tx_in, (address, amount, datum_hash)) in zip(tx_body.inputs.clone(), tx_outs_info) {
+    let multi_era_in = MultiEraInput::AlonzoCompatible(Box::new(Cow::Owned(tx_in)));
+    let address_bytes = match hex::decode(address) {
+      Ok(bytes_vec) => Bytes::from(bytes_vec),
+      _ => return UTxOs::new(),
+    };
+    let tx_out = TransactionOutput {
+      address: address_bytes,
+      amount: amount.clone(),
+      datum_hash: *datum_hash,
+    };
+    let multi_era_out = MultiEraOutput::AlonzoCompatible(Box::new(Cow::Owned(tx_out)));
+    utxos.insert(multi_era_in, multi_era_out);
+  }
+  utxos
+}
+
+fn from_amounts(amounts: &Vec<TxContentOutputAmountInner>) -> Value {
+  let mut lovelace_am = 0;
+  let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
+  for amt in amounts {
+    match amt.quantity.parse::<u64>() {
+      Ok(a) => {
+        if amt.unit == "lovelace" {
+          lovelace_am += a
+        } else {
+          let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
+            Ok(hash) => hash,
+            Err(_) => Hash::new([0; 28]),
+          };
+          let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
+          if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
+            // If found, append (asset name, amount) to assets
+            policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
+          } else {
+            // If not found, add a new tuple (policy, (asset name, amount)) to assets
+            assets.push((
+              policy,
+              vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
+            ));
+          }
+        }
+      }
+      Err(_) => {
+        // TODO: Handle error appropriately
+        continue; // Skip this iteration if parsing fails
+      }
+    }
+  }
+  if assets.len() > 0 {
+    let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
+      .into_iter()
+      .map(|(hash, vec)| {
+        let kv_pairs = KeyValuePairs::from(Vec::from(vec));
+        (hash, kv_pairs)
+      })
+      .collect();
+    Value::Multiasset(
+      lovelace_am,
+      KeyValuePairs::from(Vec::from(transformed_assets)),
+    )
+  } else {
+    Value::Coin(lovelace_am)
+  }
+}
+
+fn from_tx_in(tx_in: &TxContentUtxoOutputsInner) -> (String, Value, Option<Hash<32>>) {
+  let address = Address::from_bech32(&tx_in.address).unwrap();
+  let value = from_amounts(&tx_in.amount);
+
+  let datum_opt: Option<Hash<32>> = match &tx_in.data_hash {
+    Some(data_hash) => Some(hex::decode(data_hash).unwrap().as_slice().into()),
+    _ => None,
   };
+  (Address::to_hex(&address), value, datum_opt)
+}
+
+pub async fn validate_alonzo(mtx_a: &MintedTx<'_>, context: ValidationContext) -> Validations {
+  let tx_body: &TransactionBody = &mtx_a.transaction_body;
+  let size: &Option<u32> = &get_alonzo_comp_tx_size(tx_body);
+  let prot_params = ppt_from_context(context.protocol_params);
 
   let mut magic = 764824073; // For mainnet
   if context.network == "Preprod" {
@@ -350,69 +418,20 @@ pub async fn validate_alonzo(mtx_a: &MintedTx<'_>, context: ValidationContext) -
     network_id: net_id,
   };
 
-  let inputs = get_inputs(
-    mtx_a.transaction_body.original_hash().to_string(),
-    context.network.clone(),
-  )
-  .await;
+  let mut inputs = vec![];
+  for mtx_in in &mtx_a.transaction_body.inputs {
+    inputs.push(
+      get_input(
+        mtx_in.transaction_id.to_string(),
+        mtx_in.index as i32,
+        context.network.clone(),
+      )
+      .await,
+    );
+  }
   let mut tx_outs_info = vec![];
   inputs.iter().for_each(|tx_in| {
-    let address = &tx_in.address;
-    let mut lovelace_am = 0;
-    let mut assets: Vec<(Hash<28>, Vec<(Bytes, u64)>)> = vec![];
-    for amt in &tx_in.amount {
-      match amt.quantity.parse::<u64>() {
-        Ok(a) => {
-          if amt.unit == "lovelace" {
-            lovelace_am += a
-          } else {
-            let policy: Hash<28> = match Hash::<28>::from_str(&amt.unit[..56]) {
-              Ok(hash) => hash,
-              Err(_) => Hash::new([0; 28]),
-            };
-            let asset_name = Bytes::from(hex::decode(amt.unit[56..].to_string()).unwrap());
-            if let Some((_, policies)) = assets.iter_mut().find(|(hash, _)| hash == &policy) {
-              // If found, append (asset name, amount) to assets
-              policies.push((asset_name, amt.quantity.parse::<u64>().unwrap()));
-            } else {
-              // If not found, add a new tuple (policy, (asset name, amount)) to assets
-              assets.push((
-                policy,
-                vec![(asset_name, amt.quantity.parse::<u64>().unwrap())],
-              ));
-            }
-          }
-        }
-        Err(_) => {
-          // TODO: Handle error appropriately
-          continue; // Skip this iteration if parsing fails
-        }
-      }
-    }
-
-    let datum_opt = match &tx_in.data_hash {
-      Some(data_hash) => Some(hex::decode(data_hash).unwrap().as_slice().into()),
-      _ => None,
-    };
-    if assets.len() > 0 {
-      let transformed_assets: Vec<(Hash<28>, KeyValuePairs<Bytes, u64>)> = assets
-        .into_iter()
-        .map(|(hash, vec)| {
-          let kv_pairs = KeyValuePairs::from(Vec::from(vec));
-          (hash, kv_pairs)
-        })
-        .collect();
-      tx_outs_info.push((
-        address.clone(),
-        Value::Multiasset(
-          lovelace_am,
-          KeyValuePairs::from(Vec::from(transformed_assets)),
-        ),
-        datum_opt,
-      ));
-    } else {
-      tx_outs_info.push((address.clone(), Value::Coin(lovelace_am), datum_opt));
-    }
+    tx_outs_info.push(from_tx_in(&tx_in));
   });
   let utxos = mk_utxo_for_alonzo_compatible_tx(&mtx_a.transaction_body, &tx_outs_info);
 
