@@ -470,7 +470,10 @@ fn from_tx_in(
 ) {
   let address = match Address::from_bech32(&tx_in.address) {
     Ok(addr) => addr,
-    _ => return ("Address Not Found".to_string(), Value::Coin(0), None, None),
+    _ => {
+      println!("Error parsing address: {:?}", tx_in.address);
+      return ("".to_string(), Value::Coin(0), None, None);
+    }
   };
   let value = from_amounts(&tx_in.amount);
 

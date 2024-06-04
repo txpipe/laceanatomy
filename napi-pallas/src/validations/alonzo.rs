@@ -384,7 +384,13 @@ fn from_amounts(amounts: &Vec<TxContentOutputAmountInner>) -> Value {
 }
 
 fn from_tx_in(tx_in: &TxContentUtxoOutputsInner) -> (String, Value, Option<Hash<32>>) {
-  let address = Address::from_bech32(&tx_in.address).unwrap();
+  let address = match Address::from_bech32(&tx_in.address) {
+    Ok(addr) => addr,
+    _ => {
+      println!("Error parsing address: {:?}", tx_in.address);
+      return ("".to_string(), Value::Coin(0), None);
+    }
+  };
   let value = from_amounts(&tx_in.amount);
 
   let datum_opt: Option<Hash<32>> = match &tx_in.data_hash {

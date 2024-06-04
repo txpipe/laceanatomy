@@ -1,6 +1,7 @@
 use std::{borrow::Cow, iter::zip};
 
 use crate::{tx::get_input, Validation, ValidationContext, Validations};
+use blockfrost_openapi::models::tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner;
 use pallas::{
   applying::{
     byron::{
@@ -10,7 +11,10 @@ use pallas::{
     utils::ByronProtParams,
     UTxOs,
   },
-  codec::minicbor::encode,
+  codec::{
+    minicbor::{bytes::ByteVec, encode},
+    utils::TagWrap,
+  },
   ledger::{
     addresses::ByronAddress,
     primitives::byron::{Address as PrimitiveAddress, MintedTxPayload, Tx, TxIn, TxOut},
@@ -144,6 +148,32 @@ pub fn mk_utxo_for_byron_tx<'a>(tx: &Tx, tx_outs_info: &Vec<(ByronAddress, u64)>
   utxos
 }
 
+fn from_tx_in(tx_in: &TxContentUtxoOutputsInner) -> (ByronAddress, u64) {
+  let address = match ByronAddress::from_base58(&tx_in.address) {
+    Ok(a) => a,
+    Err(_) => {
+      println!("Error parsing address {:?}", tx_in.address);
+      let addr = ByronAddress {
+        payload: TagWrap(ByteVec::from(vec![])),
+        crc: 0,
+      };
+      return (addr, 0);
+    }
+  };
+
+  let mut lovelace_am = 0;
+  for amt in &tx_in.amount {
+    match amt.quantity.parse::<u64>() {
+      Ok(a) => lovelace_am += a,
+      Err(_) => {
+        // TODO: Handle error appropriately
+        continue; // Skip this iteration if parsing fails
+      }
+    }
+  }
+  (address, lovelace_am)
+}
+
 pub async fn validate_byron(mtxp: &MintedTxPayload<'_>, context: ValidationContext) -> Validations {
   let tx: &Tx = &mtxp.transaction;
   let size: &u64 = &get_tx_size(&tx);
@@ -183,21 +213,10 @@ pub async fn validate_byron(mtxp: &MintedTxPayload<'_>, context: ValidationConte
     }
   }
   let mut tx_outs_info = vec![];
-  for tx_in in inputs {
-    let address = ByronAddress::from_base58(&tx_in.address).unwrap();
+  inputs.iter().for_each(|tx_in| {
+    tx_outs_info.push(from_tx_in(&tx_in));
+  });
 
-    let mut lovelace_am = 0;
-    for amt in &tx_in.amount {
-      match amt.quantity.parse::<u64>() {
-        Ok(a) => lovelace_am += a,
-        Err(_) => {
-          // TODO: Handle error appropriately
-          continue; // Skip this iteration if parsing fails
-        }
-      }
-    }
-    tx_outs_info.push((address, lovelace_am));
-  }
   let utxos = mk_utxo_for_byron_tx(&mtxp.transaction, &tx_outs_info);
   let mut magic = 764824073; // For mainnet
   if context.network == "Preprod" {
