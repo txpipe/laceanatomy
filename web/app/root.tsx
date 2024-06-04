@@ -3,13 +3,23 @@ import {
   Links,
   LiveReload,
   Meta,
+  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
-  NavLink,
 } from "@remix-run/react";
 
+import { useState } from "react";
+import { ValidationsContext } from "./contexts/validations.context";
+import {
+  Eras,
+  IContext,
+  IProtocolParam,
+  IValidation,
+  Networks,
+} from "./interfaces";
 import styles from "./tailwind.css";
+import { initialProtPps, initialValidations } from "./utils";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
@@ -36,6 +46,19 @@ function MenuItem(props: { to: string; label: string }) {
 // https://flabbergasted.lexingtonthemes.com
 
 export default function App() {
+  const [validations, setValidations] =
+    useState<IValidation[]>(initialValidations);
+  const [context, setContext] = useState<
+    {
+      pptParams: IProtocolParam[];
+    } & IContext
+  >({
+    pptParams: initialProtPps,
+    blockSlot: 72316896,
+    selectedEra: Eras.Babbage,
+    selectedNetwork: Networks.Mainnet,
+  });
+
   return (
     <html lang="en">
       <head>
@@ -68,7 +91,16 @@ export default function App() {
               </a>
             </nav>
           </header>
-          <Outlet />
+          <ValidationsContext.Provider
+            value={{
+              validations,
+              setValidations,
+              context,
+              setContext,
+            }}
+          >
+            <Outlet />
+          </ValidationsContext.Provider>
           <footer className="mt-32 p-8 grid grid-cols-1 md:grid-cols-3 bg-slate-100 border-t-2 border-gray-300 border-dashed">
             <div className="flex flex-col items-center text-center mt-6">
               <p className="text-lg font-extrabold">Open Source</p>

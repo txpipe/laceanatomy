@@ -1,19 +1,13 @@
 import { ActionFunctionArgs, json, type MetaFunction } from "@remix-run/node";
-import { Form, useActionData, useSubmit } from "@remix-run/react";
+import { Form, useActionData } from "@remix-run/react";
+import { Button, RootSection, TextArea } from "~/components";
+import { logCuriosity } from "~/utils";
 import * as server from "./block.server";
-import {
-  Button,
-  DataSection,
-  logCuriosity,
-  RootSection,
-  TextArea,
-} from "~/components";
-import { KeyboardEventHandler } from "react";
 import TOPICS from "./block.topics";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Cardano Block - Lovelace Anatomy" },
+    { title: "Cardano Block - Lace Anatomy" },
     { name: "description", content: "Lets dissect a Cardano block" },
   ];
 };

@@ -2,7 +2,7 @@ import { type MetaFunction } from "@remix-run/node";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Cardano Datum - Lovelace Anatomy" },
+    { title: "Cardano Datum - Lace Anatomy" },
     { name: "description", content: "Lets dissect a Cardano datum" },
   ];
 };

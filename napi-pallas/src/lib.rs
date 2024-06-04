@@ -12,6 +12,65 @@ mod validations;
 
 #[derive(Default)]
 #[napi(object)]
+pub struct ProtocolParams {
+  pub epoch: u32,
+  pub min_fee_a: u32,
+  pub min_fee_b: u32,
+  pub max_block_size: u32,
+  pub max_tx_size: u32,
+  pub max_block_header_size: u32,
+  pub key_deposit: i64,
+  pub pool_deposit: i64,
+  pub e_max: i64,
+  pub n_opt: u32,
+  pub a0_numerator: i64,
+  pub a0_denominator: i64,
+  pub rho_numerator: i64,
+  pub rho_denominator: i64,
+  pub tau_numerator: i64,
+  pub tau_denominator: i64,
+  pub decentralisation_param_numerator: i64,
+  pub decentralisation_param_denominator: i64,
+  pub extra_entropy_numerator: u32,
+  pub extra_entropy_denominator: u32,
+  pub protocol_major_ver: i64,
+  pub protocol_minor_ver: i64,
+  pub min_utxo: i64,
+  pub min_pool_cost: i64,
+  pub price_mem_numerator: i64,
+  pub price_mem_denominator: i64,
+  pub price_step_numerator: i64,
+  pub price_step_denominator: i64,
+  pub max_tx_ex_mem: u32,
+  pub max_tx_ex_steps: i64,
+  pub max_block_ex_mem: u32,
+  pub max_block_ex_steps: i64,
+  pub max_val_size: u32,
+  pub collateral_percent: u32,
+  pub max_collateral_inputs: u32,
+  pub coins_per_utxo_size: i64,
+  pub coins_per_utxo_word: i64,
+  pub error: Option<String>,
+}
+
+impl ProtocolParams {
+  fn new() -> Self {
+    Default::default()
+  }
+}
+
+#[derive(Default)]
+#[napi(object)]
+pub struct ValidationContext {
+  pub protocol_params: ProtocolParams,
+
+  pub network: String,
+  pub era: String,
+  pub block_slot: u32,
+}
+
+#[derive(Default)]
+#[napi(object)]
 pub struct Attribute {
   pub topic: Option<String>,
   pub value: Option<String>,
@@ -100,7 +159,7 @@ impl Section {
     self
   }
 
-  fn build_child<F>(mut self, func: F) -> Self
+  fn build_child<F>(self, func: F) -> Self
   where
     F: FnOnce() -> Section,
   {
@@ -144,6 +203,14 @@ pub fn parse_address(raw: String) -> address::Output {
   }
 }
 
+#[napi]
+pub fn safe_parse_block(raw: String) -> Section {
+  match block::parse(raw) {
+    Ok(x) => x,
+    Err(x) => x,
+  }
+}
+
 #[derive(Default)]
 #[napi(object)]
 pub struct SectionValidation {
@@ -151,14 +218,15 @@ pub struct SectionValidation {
   pub validations: Validations,
 }
 
+#[tokio::main]
 #[napi]
-pub fn safe_parse_tx(raw: String) -> SectionValidation {
-  match tx::parse(raw) {
+pub async fn safe_parse_tx(raw: String, context: ValidationContext) -> SectionValidation {
+  match tx::parse(raw, context).await {
     Ok(x) => {
       let (section, validations) = x;
       SectionValidation {
         section,
-        validations: validations,
+        validations,
       }
     }
     Err(x) => SectionValidation {
@@ -168,15 +236,16 @@ pub fn safe_parse_tx(raw: String) -> SectionValidation {
   }
 }
 
+#[tokio::main]
 #[napi]
-pub fn safe_parse_block(raw: String) -> Section {
-  match block::parse(raw) {
-    Ok(x) => x,
-    Err(x) => x,
+pub async fn get_latest_parameters(network: String) -> ProtocolParams {
+  match tx::get_epochs_latest_parameters(network).await {
+    Ok(params) => params,
+    Err(_) => ProtocolParams::new(),
   }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 #[napi(object)]
 pub struct Validation {
   pub name: String,
@@ -208,10 +277,11 @@ impl Validation {
   }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[napi(object)]
 pub struct Validations {
   pub validations: Vec<Validation>,
+  pub era: String,
 }
 
 impl Validations {
@@ -223,5 +293,12 @@ impl Validations {
     self.validations.push(validation);
 
     self
+  }
+
+  pub fn with_era(self, era: impl ToString) -> Self {
+    Self {
+      era: era.to_string(),
+      ..self
+    }
   }
 }

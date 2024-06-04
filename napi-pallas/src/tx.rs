@@ -1,7 +1,13 @@
-use crate::validations::validate::validate;
-use crate::Validations;
+use crate::{validations::validate::validate, ValidationContext};
+use crate::{ProtocolParams, Validations};
 
 use super::Section;
+use blockfrost::{BlockFrostSettings, BlockfrostAPI};
+use blockfrost_openapi::models::tx_content_utxo_outputs_inner::TxContentUtxoOutputsInner;
+use dotenv::dotenv;
+use num_rational::Rational64;
+use num_traits::FromPrimitive;
+use pallas::ledger::traverse::Era;
 use pallas::{
   codec::utils::KeepRaw,
   crypto::hash::Hasher,
@@ -14,6 +20,7 @@ use pallas::{
     traverse::{ComputeHash, MultiEraInput, MultiEraOutput, MultiEraTx},
   },
 };
+use std::env;
 
 fn generic_tx_input_section(topic: &str, i: &MultiEraInput) -> Section {
   Section::new()
@@ -235,13 +242,26 @@ pub fn create_cbor_structure(tx: &MultiEraTx<'_>) -> Section {
   out
 }
 
-pub fn parse(raw: String) -> Result<(Section, Validations), Section> {
+pub async fn parse(
+  raw: String,
+  context: ValidationContext,
+) -> Result<(Section, Validations), Section> {
   let res_cbor = hex::decode(raw);
+  let mut era_decode = Era::Babbage;
+  match context.era.as_str() {
+    "Alonzo" => era_decode = Era::Alonzo,
+    "Babbage" => era_decode = Era::Babbage,
+    "Byron" => era_decode = Era::Byron,
+    "Conway" => era_decode = Era::Conway,
+    "Shelley MA" => era_decode = Era::Shelley,
+    // This case should never happen
+    _ => {}
+  }
   match res_cbor {
     Ok(cbor) => {
-      let res_mtx = MultiEraTx::decode(&cbor);
+      let res_mtx = MultiEraTx::decode_for_era(era_decode, &cbor);
       match res_mtx {
-        Ok(mtx) => Ok((create_cbor_structure(&mtx), validate(&mtx))),
+        Ok(mtx) => Ok((create_cbor_structure(&mtx), validate(&mtx, context).await)),
         Err(e) => {
           let mut err = Section::new();
           err.error = Some(e.to_string());
@@ -254,5 +274,171 @@ pub fn parse(raw: String) -> Result<(Section, Validations), Section> {
       err.error = Some(e.to_string());
       Err(err)
     }
+  }
+}
+
+fn to_fraction(value: f32) -> (i64, i64) {
+  let rational = Rational64::from_f32(value).unwrap_or_else(|| Rational64::new(0, 1));
+  let (numerator, denominator) = rational.into();
+
+  (numerator, denominator)
+}
+
+fn parse_string_to_i64(value: String) -> i64 {
+  match value.parse::<i64>() {
+    Ok(num) => num,
+    Err(_) => 0,
+  }
+}
+
+fn parse_option_string_to_i64(value: Option<String>) -> i64 {
+  match value {
+    Some(value) => match value.parse::<i64>() {
+      Ok(num) => num,
+      Err(_) => 0,
+    },
+    None => 0,
+  }
+}
+
+fn parse_option_string_to_u32(value: Option<String>) -> u32 {
+  match value {
+    Some(value) => match value.parse::<u32>() {
+      Ok(num) => num,
+      Err(_) => 0,
+    },
+    None => 0,
+  }
+}
+
+fn parse_option_i32_to_u32(value: Option<i32>) -> u32 {
+  match value {
+    Some(value) => value as u32,
+    None => 0,
+  }
+}
+
+pub async fn get_epochs_latest_parameters(
+  network: String,
+) -> Result<ProtocolParams, ProtocolParams> {
+  let settings = BlockFrostSettings::new();
+  dotenv().ok();
+  let mut project_id = env::var("MAINNET_PROJECT_ID").expect("MAINNET_PROJECT_ID must be set.");
+  if network == "Preprod" {
+    project_id = env::var("PREPROD_PROJECT_ID").expect("PREPROD_PROJECT_ID must be set.");
+  } else if network == "Preview" {
+    project_id = env::var("PREVIEW_PROJECT_ID").expect("PREVIEW_PROJECT_ID must be set.");
+  }
+
+  let api = BlockfrostAPI::new(&project_id, settings);
+  let epochs_latest_parameters = api.epochs_latest_parameters().await;
+  match epochs_latest_parameters {
+    Ok(params) => {
+      let mut out = ProtocolParams::new();
+      let parsed_key_deposit = parse_string_to_i64(params.key_deposit);
+      let parsed_pool_deposit = parse_string_to_i64(params.pool_deposit);
+      let parsed_extra_entropy = match params.extra_entropy {
+        Some(value) => match value.parse::<f32>() {
+          Ok(num) => num,
+          Err(_) => 0.0,
+        },
+        None => 0.0,
+      };
+      let parsed_price_mem = match params.price_mem {
+        Some(value) => value,
+        None => 0.0,
+      };
+      let parsed_price_step = match params.price_step {
+        Some(value) => value,
+        None => 0.0,
+      };
+      let parsed_min_utxo = parse_string_to_i64(params.min_utxo);
+      let parsed_min_pool_cost = parse_string_to_i64(params.min_pool_cost);
+      let parsed_max_tx_ex_mem = parse_option_string_to_u32(params.max_tx_ex_mem);
+      let parsed_max_tx_ex_steps = parse_option_string_to_i64(params.max_tx_ex_steps);
+      let parsed_max_block_ex_mem = parse_option_string_to_u32(params.max_block_ex_mem);
+      let parsed_max_block_ex_steps = parse_option_string_to_i64(params.max_block_ex_steps);
+      let parsed_max_val_size = parse_option_string_to_u32(params.max_val_size);
+      let parsed_collateral_percent = parse_option_i32_to_u32(params.collateral_percent);
+      let parsed_max_collateral_inputs = parse_option_i32_to_u32(params.max_collateral_inputs);
+      let parsed_coins_per_utxo_size = parse_option_string_to_i64(params.coins_per_utxo_size);
+      let parsed_coins_per_utxo_word = parse_option_string_to_i64(params.coins_per_utxo_word);
+
+      let (a0_numerator, a0_denominator) = to_fraction(params.a0);
+      let (rho_numerator, rho_denominator) = to_fraction(params.rho);
+      let (tau_numerator, tau_denominator) = to_fraction(params.tau);
+      let (decentralisation_param_numerator, decentralisation_param_denominator) =
+        to_fraction(params.decentralisation_param);
+      let (extra_entropy_numerator, extra_entropy_denominator) = to_fraction(parsed_extra_entropy);
+      let (price_mem_numerator, price_mem_denominator) = to_fraction(parsed_price_mem);
+      let (price_step_numerator, price_step_denominator) = to_fraction(parsed_price_step);
+
+      out.epoch = params.epoch as u32;
+      out.min_fee_a = params.min_fee_a as u32;
+      out.min_fee_b = params.min_fee_b as u32;
+      out.max_block_size = params.max_block_size as u32;
+      out.max_tx_size = params.max_tx_size as u32;
+      out.max_block_header_size = params.max_block_header_size as u32;
+      out.key_deposit = parsed_key_deposit;
+      out.pool_deposit = parsed_pool_deposit;
+      out.e_max = params.e_max as i64;
+      out.n_opt = params.n_opt as u32;
+      out.a0_numerator = a0_numerator;
+      out.a0_denominator = a0_denominator;
+      out.rho_numerator = rho_numerator;
+      out.rho_denominator = rho_denominator;
+      out.tau_numerator = tau_numerator;
+      out.tau_denominator = tau_denominator;
+      out.decentralisation_param_numerator = decentralisation_param_numerator;
+      out.decentralisation_param_denominator = decentralisation_param_denominator;
+      out.extra_entropy_numerator = extra_entropy_numerator as u32;
+      out.extra_entropy_denominator = extra_entropy_denominator as u32;
+      out.protocol_major_ver = params.protocol_major_ver as i64;
+      out.protocol_minor_ver = params.protocol_minor_ver as i64;
+      out.min_utxo = parsed_min_utxo;
+      out.min_pool_cost = parsed_min_pool_cost;
+      out.price_mem_numerator = price_mem_numerator;
+      out.price_mem_denominator = price_mem_denominator;
+      out.price_step_numerator = price_step_numerator;
+      out.price_step_denominator = price_step_denominator;
+      out.max_tx_ex_mem = parsed_max_tx_ex_mem;
+      out.max_tx_ex_steps = parsed_max_tx_ex_steps;
+      out.max_block_ex_mem = parsed_max_block_ex_mem;
+      out.max_block_ex_steps = parsed_max_block_ex_steps;
+      out.max_val_size = parsed_max_val_size;
+      out.collateral_percent = parsed_collateral_percent;
+      out.max_collateral_inputs = parsed_max_collateral_inputs;
+      out.coins_per_utxo_size = parsed_coins_per_utxo_size;
+      out.coins_per_utxo_word = parsed_coins_per_utxo_word;
+
+      Ok(out)
+    }
+    Err(_) => {
+      let mut out = ProtocolParams::new();
+      out.epoch = 0;
+      Ok(out)
+    }
+  }
+}
+
+pub async fn get_input(hash: String, index: i32, network: String) -> TxContentUtxoOutputsInner {
+  let settings = BlockFrostSettings::new();
+  dotenv().ok();
+  let mut project_id = env::var("MAINNET_PROJECT_ID").expect("MAINNET_PROJECT_ID must be set.");
+  if network == "Preprod" {
+    project_id = env::var("PREPROD_PROJECT_ID").expect("PREPROD_PROJECT_ID must be set.");
+  } else if network == "Preview" {
+    project_id = env::var("PREVIEW_PROJECT_ID").expect("PREVIEW_PROJECT_ID must be set.");
+  }
+
+  let api = BlockfrostAPI::new(&project_id, settings);
+  let tx_content = api.transactions_utxos(&hash).await;
+  match tx_content {
+    Ok(tx_) => tx_
+      .outputs
+      .into_iter()
+      .find(|x| x.output_index == index)
+      .unwrap(),
+    Err(_) => TxContentUtxoOutputsInner::default(),
   }
 }
