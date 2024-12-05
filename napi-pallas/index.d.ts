@@ -32,13 +32,13 @@ export interface Section {
   bytes?: string
   children: Array<Section>
 }
-export function parseAddress(raw: string): Output
+export declare function parseAddress(raw: string): Output
 export interface SectionValidation {
   section: Section
   validations: Validations
 }
-export function safeParseTx(raw: string): SectionValidation
-export function safeParseBlock(raw: string): Section
+export declare function safeParseTx(raw: string): SectionValidation
+export declare function safeParseBlock(raw: string): Section
 export interface Validation {
   name: string
   value: boolean
