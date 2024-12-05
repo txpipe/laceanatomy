@@ -100,7 +100,7 @@ impl Section {
     self
   }
 
-  fn build_child<F>(mut self, func: F) -> Self
+  fn build_child<F>(self, func: F) -> Self
   where
     F: FnOnce() -> Section,
   {
