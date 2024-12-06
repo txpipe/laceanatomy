@@ -57,7 +57,7 @@ fn tx_output_section(o: &MultiEraOutput) -> Section {
     .with_topic("output")
     .with_bytes(&o.encode())
     .with_attr("tx_output_address", o.address().unwrap())
-    .with_attr("tx_output_lovelace", o.lovelace_amount())
+    .with_attr("tx_output_lovelace", o.value().coin())
     .maybe_push_child(o.datum().map(|x| {
       match x {
         pallas::ledger::primitives::conway::PseudoDatumOption::Hash(x) => Section::new()
@@ -71,7 +71,7 @@ fn tx_output_section(o: &MultiEraOutput) -> Section {
     .build_child(|| {
       Section::new()
         .with_topic("tx_output_assets")
-        .collect_children(o.non_ada_assets().into_iter().map(|x| {
+        .collect_children(o.value().assets().into_iter().map(|x| {
           Section::new()
             .with_topic("tx_output_asset_policy")
             .with_attr("tx_output_asset_policy_id", x.policy())
@@ -81,8 +81,14 @@ fn tx_output_section(o: &MultiEraOutput) -> Section {
                 .collect_children(x.assets().iter().map(|asset| {
                   Section::new()
                     .with_topic("tx_output_asset_policy_asset")
-                    .with_attr("tx_output_asset_policy_asset_name", hex::encode(asset.name()))
-                    .with_maybe_attr("tx_output_asset_policy_asset_name_ascii", asset.to_ascii_name())
+                    .with_attr(
+                      "tx_output_asset_policy_asset_name",
+                      hex::encode(asset.name()),
+                    )
+                    .with_maybe_attr(
+                      "tx_output_asset_policy_asset_name_ascii",
+                      asset.to_ascii_name(),
+                    )
                     .with_maybe_attr("tx_output_asset_policy_asset_count", asset.output_coin())
                 }))
             })
